@@ -1,0 +1,24 @@
+{
+  "recommendations": [
+    "dracula-theme.theme-dracula",
+    "rust-lang.rust-analyzer",
+    "editorconfig.editor",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-xml",
+    "redhat.vscode-yaml",
+    "actboy168.tasks",
+    "gruntfuggly.todo-tree",
+    "bierner.markdown-preview-github-styles",
+    "yzhang.markdown-all-in-one",
+    "berublan.vscode-log-viewer",
+    "usernamehw.errorlens",
+    "vscode-icons-team.vscode-icons",
+    "eamodio.gitlens",
+    "vadimcn.vscode-lldb",
+    "joshbolduc.commitlint",
+    "dustypomerleau.rust-syntax",
+    "fill-labs.dependi",
+    "ritwickdey.liveserver",
+    "zxh404.vscode-proto3"
+  ]
+}
