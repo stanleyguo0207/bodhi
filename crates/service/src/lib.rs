@@ -1,14 +1,12 @@
-pub fn add(left: u64, right: u64) -> u64 {
-  left + right
-}
+use args::Args;
+use clap::Parser;
+
+mod args;
 
 #[cfg(test)]
-mod tests {
-  use super::*;
+mod args_test;
 
-  #[test]
-  fn it_works() {
-    let result = add(2, 2);
-    assert_eq!(result, 4);
-  }
+pub fn serve() {
+  let args = Args::parse();
+  println!("配置目录: {}", args.config_dir.display())
 }

@@ -8,3 +8,6 @@ members = ["apps/*", "crates/*"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.85.0"
+
+[workspace.dependencies]
+clap = { version = "4.5.43", features = ["derive"] }
