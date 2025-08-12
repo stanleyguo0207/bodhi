@@ -2,4 +2,4 @@
 # https://github.com/rust-lang/rust-clippy
 # https://doc.rust-lang.org/clippy/configuration.html
 
-msrv = "1.85.0"
+msrv = "1.89.0"
