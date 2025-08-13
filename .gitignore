@@ -6,3 +6,6 @@
 
 # lock for libs
 /Cargo.lock
+
+# rust docs folders
+/docs/

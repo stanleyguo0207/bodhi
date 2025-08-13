@@ -5,4 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-service = { path = "../../crates/service" }
+thiserror = { workspace = true }
+bodhi_service = { path = "../../crates/bodhi_service" }
+bodhi_error = { path = "../../crates/bodhi_error" }
+bodhi_result = { path = "../../crates/bodhi_result" }
