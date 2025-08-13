@@ -1,7 +1,8 @@
-use clap::Parser;
+use bodhi_args::parse_args;
+use bodhi_result::Result;
 
-pub fn serve() -> bodhi_result::Result<()> {
-  let args = bodhi_args::Args::try_parse()?;
+pub fn serve() -> Result<()> {
+  let args = parse_args()?;
   println!("Configuration directory: {}", args.config_dir.display());
   Ok(())
 }

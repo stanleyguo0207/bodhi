@@ -5,7 +5,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-clap = { workspace = true }
 bodhi_args = { path = "../bodhi_args" }
 bodhi_result = { path = "../bodhi_result" }
 
