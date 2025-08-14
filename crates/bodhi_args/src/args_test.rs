@@ -4,7 +4,7 @@ mod tests {
   use std::path::PathBuf;
   use tempfile::{NamedTempFile, tempdir};
 
-  use crate::args::*;
+  use super::super::args::*;
 
   #[test]
   fn test_custom_config_dir() {
