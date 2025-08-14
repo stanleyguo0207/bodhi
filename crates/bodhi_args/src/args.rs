@@ -1,14 +1,21 @@
 use clap::Parser;
+use std::fs::metadata;
+use std::path::PathBuf;
 
-fn validate_dir(s: &str) -> Result<std::path::PathBuf, String> {
-  let path = std::path::PathBuf::from(s);
+use bodhi_result::Result;
 
-  if !path.exists() {
-    return Err(format!("path '{}' not exists", s));
-  }
+fn validate_dir(s: &str) -> Result<PathBuf> {
+  let path = PathBuf::from(s);
 
-  if !path.is_dir() {
-    return Err(format!("'{}' is not a directory", s));
+  let meta = metadata(&path)?;
+  if !meta.is_dir() {
+    return Err(
+      std::io::Error::new(
+        std::io::ErrorKind::NotADirectory,
+        format!("'{}' is not a directory", s),
+      )
+      .into(),
+    );
   }
 
   Ok(path)
@@ -24,7 +31,19 @@ pub struct Args {
     value_name = "DIRECTORY",
     value_hint = clap::ValueHint::DirPath,
     value_parser = validate_dir,
-    help = "path to the configuration directory"
+    help = "Path to the configuration directory"
   )]
-  pub config_dir: std::path::PathBuf,
+  pub config_dir: PathBuf,
+}
+
+/// Parse command line parameter.
+pub fn parse_args() -> Result<Args> {
+  Args::try_parse().map_err(|e| {
+    if e.kind() == clap::error::ErrorKind::DisplayHelp
+      || e.kind() == clap::error::ErrorKind::DisplayVersion
+    {
+      e.exit();
+    }
+    e.into()
+  })
 }

@@ -1,8 +1,10 @@
-use result::GatewayResult;
-
 mod error;
 mod result;
 
+use bodhi_service::service;
+
+use result::GatewayResult;
+
 fn main() -> GatewayResult<()> {
-  bodhi_service::serve().map_err(Into::into)
+  service::serve().map_err(Into::into)
 }
