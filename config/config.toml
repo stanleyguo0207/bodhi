@@ -1,0 +1,10 @@
+[framework]
+[framework.log]
+level = "info"
+dir = "logs"
+name = "gateway.log"
+
+[business]
+listen_port = 8080
+upstream = "http://localhost:9000"
+timeout_ms = 5000

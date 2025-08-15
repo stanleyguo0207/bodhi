@@ -5,8 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+serde = { workspace = true }
 bodhi_args = { path = "../bodhi_args" }
 bodhi_result = { path = "../bodhi_result" }
+bodhi_config = { path = "../bodhi_config" }
 
 [dev-dependencies]
 tempfile = "3.20.0"
