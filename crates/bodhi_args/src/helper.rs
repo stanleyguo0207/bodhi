@@ -12,17 +12,6 @@ const INVALID_DIR_SOLUTION: &str = "Please provide an existing directory path";
 pub fn validate_dir(s: &str) -> Result<PathBuf> {
   let path = PathBuf::from(s);
 
-  let meta = metadata(&path)?;
-  if !meta.is_dir() {
-    return Err(
-      std::io::Error::new(
-        std::io::ErrorKind::NotADirectory,
-        format!("'{}' is not a directory", s),
-      )
-      .into(),
-    );
-  }
-
   let meta = metadata(&path).map_err(|io_error| {
     custom::error::Error::new(
       &format!("Unable to access path '{}'", s),

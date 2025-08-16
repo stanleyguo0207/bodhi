@@ -32,6 +32,7 @@ pub fn parse_args() -> Result<Args> {
     {
       clap_err.exit();
     }
+
     custom::error::Error::new(
       "Command line argument parsing failed",
       ARG_PARSE_SOLUTION,

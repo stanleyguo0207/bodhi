@@ -22,7 +22,7 @@ impl Error {
 
 impl std::fmt::Display for Error {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    writeln!(f, "{}", self.problem)?;
+    writeln!(f, "problem: {}", self.problem)?;
     writeln!(f, "solution: {}", self.solution)?;
     writeln!(f, "source: {}", self.source)
   }
