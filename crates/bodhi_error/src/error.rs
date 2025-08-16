@@ -1,5 +1,6 @@
 use crate::custom;
 
+/// Framework error.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
   #[error("Args parse error: {0}")]

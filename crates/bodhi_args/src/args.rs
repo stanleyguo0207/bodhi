@@ -1,27 +1,15 @@
 use clap::Parser;
-use std::fs::metadata;
 use std::path::PathBuf;
 
+use bodhi_error::custom;
 use bodhi_result::Result;
 
-fn validate_dir(s: &str) -> Result<PathBuf> {
-  let path = PathBuf::from(s);
+use crate::helper;
 
-  let meta = metadata(&path)?;
-  if !meta.is_dir() {
-    return Err(
-      std::io::Error::new(
-        std::io::ErrorKind::NotADirectory,
-        format!("'{}' is not a directory", s),
-      )
-      .into(),
-    );
-  }
+const ARG_PARSE_SOLUTION: &str =
+  "Please check if the arguments are formatted correctly, use --help for assistance";
 
-  Ok(path)
-}
-
-/// Command line parameter section parser.
+/// Command line argument parsing structure.
 #[derive(Parser, Debug, PartialEq)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -30,20 +18,25 @@ pub struct Args {
     long = "cfgd",
     value_name = "DIRECTORY",
     value_hint = clap::ValueHint::DirPath,
-    value_parser = validate_dir,
-    help = "Path to the configuration directory"
+    value_parser = helper::validate_dir,
+    help = "Path to the configuration files directory"
   )]
   pub config_dir: PathBuf,
 }
 
-/// Parse command line parameter.
+/// Parse command line arguments.
 pub fn parse_args() -> Result<Args> {
-  Args::try_parse().map_err(|e| {
-    if e.kind() == clap::error::ErrorKind::DisplayHelp
-      || e.kind() == clap::error::ErrorKind::DisplayVersion
+  Args::try_parse().map_err(|clap_err| {
+    if clap_err.kind() == clap::error::ErrorKind::DisplayHelp
+      || clap_err.kind() == clap::error::ErrorKind::DisplayVersion
     {
-      e.exit();
+      clap_err.exit();
     }
-    e.into()
+    custom::error::Error::new(
+      "Command line argument parsing failed",
+      ARG_PARSE_SOLUTION,
+      Box::new(clap_err),
+    )
+    .into()
   })
 }

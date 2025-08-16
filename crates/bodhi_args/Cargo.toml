@@ -7,6 +7,8 @@ rust-version.workspace = true
 [dependencies]
 clap = { workspace = true }
 bodhi_result = { path = "../bodhi_result" }
+bodhi_error = { path = "../bodhi_error" }
+
 
 [dev-dependencies]
 tempfile = "3.20.0"
