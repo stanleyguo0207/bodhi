@@ -1,3 +1,5 @@
+use crate::custom;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
   #[error("Args parse error: {0}")]
@@ -8,4 +10,7 @@ pub enum Error {
 
   #[error("IO error: {0}")]
   Io(#[from] std::io::Error),
+
+  #[error("{0}")]
+  Custom(#[from] custom::error::Error),
 }
