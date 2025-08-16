@@ -1,12 +1,12 @@
 use serde::Deserialize;
 
-use crate::fwk_config::FwkConfig;
+use crate::fwk;
 
 /// Application configuration.
 #[derive(Debug, Deserialize, Clone)]
-pub struct AppConfig<BizConfig> {
+pub struct Config<T> {
   /// Framework configuration.
-  pub framework: FwkConfig,
+  pub framework: fwk::Config,
   /// Business configuration.
-  pub business: BizConfig,
+  pub business: T,
 }

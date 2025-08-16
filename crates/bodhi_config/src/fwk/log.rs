@@ -1,15 +1,8 @@
 use serde::Deserialize;
 
-/// Framework configuration.
-#[derive(Debug, Deserialize, Clone)]
-pub struct FwkConfig {
-  /// Log configuration.
-  pub log: LogConfig,
-}
-
 /// Log configuration.
 #[derive(Debug, Deserialize, Clone)]
-pub struct LogConfig {
+pub struct Config {
   /// Log level.
   pub level: String,
   /// Log directory.
