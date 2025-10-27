@@ -1,0 +1,10 @@
+[package]
+name = "gateway"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+bodhi = { path = "../../crates/bodhi" }
+serde_json = { workspace = true }
