@@ -15,4 +15,9 @@
 //! ```
 
 pub mod error;
+pub mod init;
 pub mod service;
+
+pub use error::Error;
+pub use error::Result;
+pub use init::init_tracing_and_errors;

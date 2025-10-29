@@ -5,13 +5,13 @@ use super::types::Error;
 
 impl From<String> for Error {
   fn from(s: String) -> Self {
-    Error::ServiceError(s)
+    Error::service(s)
   }
 }
 
 impl From<&str> for Error {
   fn from(s: &str) -> Self {
-    Error::ServiceError(s.to_string())
+    Error::service(s.to_string())
   }
 }
 

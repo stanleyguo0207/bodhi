@@ -9,5 +9,7 @@ pub mod helpers;
 pub mod impls;
 pub mod types;
 
-// 将核心类型导出到 `bodhi::error::Error` 和 `bodhi::error::BoxErr`。
-pub use types::{BoxErr, Error};
+// 将核心类型导出到 `bodhi::error::Error`。
+pub use types::Error;
+// 将 Result 简写导出到 `bodhi::error::Result`。
+pub use types::Result;

@@ -1,54 +1,87 @@
-//! 错误类型定义：包含核心错误枚举和用于包装任意上层错误的类型。
+//! 错误类型定义：使用 `eyre` 作为错误报告载体，并用 `thiserror` 定义业务错误枚举。
 //!
-//! 这里定义的类型会被 `error` 模块重新导出为 `bodhi::error::Error` 和 `bodhi::error::BoxErr`，
-//! 供其它子 crate 和二进制使用。
-use std::fmt;
+//! 设计目标：高性能、支持调用链与上下文（通过 `eyre::Report` 与 `tracing`），并在
+//! debug 模式下启用彩色错误报告（`color-eyre`）。
 
-/// 用于存放任意上层错误的 boxed 类型（线程安全、'static）。
-pub type BoxErr = Box<dyn std::error::Error + Send + Sync + 'static>;
+/// 为当前 crate 定义的 Result 简写，使用 `eyre::Report` 作为错误类型。
+pub type Result<T> = std::result::Result<T, eyre::Report>;
 
-/// 一个用于将纯文本字符串包装为实现了 `Error` 的小包装类型，
-/// 以便把远端/文本错误信息存入 `BoxErr`。
-#[derive(Debug)]
-pub(crate) struct MessageError(String);
-
-impl MessageError {
-  /// 创建一个新的 `MessageError`，用于把纯文本消息包装为实现 `Error` 的类型。
-  ///
-  /// 仅在 crate 内部可见（`pub(crate)`），外部依赖不应直接构造或依赖其内部结构。
-  pub(crate) fn new(s: String) -> Self {
-    Self(s)
-  }
-}
-
-impl fmt::Display for MessageError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.0)
-  }
-}
-
-impl std::error::Error for MessageError {}
-
+/// 业务错误枚举：使用 `thiserror` 派生 Display/Error，业务侧可直接匹配这些变体。
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-  /// 服务错误，通常用于内部业务错误的简短描述。
+  /// 网络相关错误
+  #[error("Network error: {0}")]
+  Network(String),
+
+  /// 数据库相关错误
+  #[error("Database error: {0}")]
+  Database(String),
+
+  /// 逻辑/业务错误（原来的 ServiceError）
   #[error("Service error: {0}")]
   ServiceError(String),
 
-  /// 未知错误。
-  #[error("Unknown error")]
-  Unknown,
-
-  /// 外层/上层错误包装。
+  /// 外部/第三方错误，直接从 `eyre::Report` 转换进来以保留链与上下文。
   ///
-  /// 用途：当上层（例如 gateway/instance/world 等子crate 或外部服务）定义了自有错误类型，
-  /// 可以将其包装进此变体以保留原始错误信息与类型名，方便上层解析与链路追踪。
-  // 注意：`kind` 为可选项，Display 字符串中使用 Debug 格式显示以便可读性。
-  #[error("External error ({kind:?}): {source}")]
+  /// 现在使用结构化变体以便保留额外元数据 —— `kind` 表示上层错误类型名（如果有），
+  /// `remote_backtrace` 可选地包含远端回传的 backtrace 字符串。
+  #[error("{report}")]
   External {
-    #[source]
-    source: BoxErr,
-    /// 可选的上层错误类型名（例如 Rust 类型名或远端 error_type 字段），用于快速识别来源。
+    /// 来自 eyre 的报告（错误链与上下文）
+    report: eyre::Report,
+
+    /// 可选的远端/上层错误类型标识（例如 `GatewayError`）
     kind: Option<String>,
+
+    /// 可选的远端 backtrace 字符串（如果上游传递了的话）
+    remote_backtrace: Option<String>,
   },
+}
+
+// 手动实现从 eyre::Report 到 Error 的转换，确保在直接把 Report 转入时
+// 会把其它字段置为 None（兼容之前的简洁用法）。
+impl From<eyre::Report> for Error {
+  fn from(report: eyre::Report) -> Self {
+    Error::External {
+      report,
+      kind: None,
+      remote_backtrace: None,
+    }
+  }
+}
+
+impl Error {
+  /// 便捷构造：保留与旧 `ServiceError` 的语义
+  pub fn service<S: Into<String>>(s: S) -> Self {
+    Error::ServiceError(s.into())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use eyre::{Report, WrapErr};
+
+  #[test]
+  fn wrap_err_includes_context() {
+    let res: std::result::Result<(), Report> =
+      Err(std::io::Error::new(std::io::ErrorKind::Other, "io fail")).wrap_err("加载玩家 42 失败");
+    let report = res.unwrap_err();
+    let s = format!("{}", report);
+    assert!(s.contains("加载玩家 42 失败"));
+  }
+
+  #[test]
+  fn service_error_works() {
+    let e = Error::service("测试错误");
+    let s = format!("{}", e);
+    assert!(s.contains("测试错误"));
+  }
+
+  #[test]
+  fn wrap_err_chain_prints_context() {
+    let rep: Report = eyre::eyre!("base").wrap_err("上层上下文");
+    let out = format!("{}", rep);
+    assert!(out.contains("上层上下文"));
+  }
 }
