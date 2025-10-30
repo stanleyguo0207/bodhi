@@ -18,6 +18,9 @@ tracing-subscriber = { workspace = true, features = [
 ] }
 tracing-error = { workspace = true }
 
+# CLI parsing
+clap = { version = "4", features = ["derive"] }
+
 # Reuse workspace-managed serde and serde_json if available for serialization helpers
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

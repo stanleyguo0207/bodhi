@@ -14,10 +14,9 @@
 //! let parsed = bodhi::error::Error::from_serialized_json("{\"type\":\"X\",\"message\":\"m\"}");
 //! ```
 
+pub mod args;
 pub mod error;
-pub mod init;
 pub mod service;
 
 pub use error::Error;
 pub use error::Result;
-pub use init::init_tracing_and_errors;

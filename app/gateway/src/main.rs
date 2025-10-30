@@ -1,6 +1,6 @@
 fn main() -> bodhi::Result<()> {
   // 使用 bodhi 提供的统一初始化函数，包含 tracing + 错误处理器（color-eyre）配置。
-  bodhi::init_tracing_and_errors()?;
+  bodhi::service::serve()?;
 
   println!("Hello, gateway example: convert and serialize errors");
 
