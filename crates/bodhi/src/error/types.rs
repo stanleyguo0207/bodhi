@@ -28,7 +28,7 @@ pub enum Error {
   ///
   /// 现在使用结构化变体以便保留额外元数据 —— `kind` 表示上层错误类型名（如果有），
   /// `remote_backtrace` 可选地包含远端回传的 backtrace 字符串。
-  #[error("{report}")]
+  #[error("{report} {remote_message:?}")]
   External {
     /// 来自 eyre 的报告（错误链与上下文）
     report: eyre::Report,
@@ -38,6 +38,12 @@ pub enum Error {
 
     /// 可选的远端 backtrace 字符串（如果上游传递了的话）
     remote_backtrace: Option<String>,
+
+    /// 可选的上游原始错误消息（如果从远端 payload 构造时可用）。
+    ///
+    /// 注意：不要把所有上游原始文本都暴露到生产日志中 — 该字段用于跨进程传输时保留上游主动提供的 message，
+    /// 并可以在序列化时被 `to_remote_payload_sanitized` 排除以避免泄露敏感信息。
+    remote_message: Option<String>,
   },
 }
 
@@ -49,6 +55,7 @@ impl From<eyre::Report> for Error {
       report,
       kind: None,
       remote_backtrace: None,
+      remote_message: None,
     }
   }
 }
@@ -86,5 +93,44 @@ mod tests {
     let rep: Report = eyre::eyre!("base").wrap_err("上层上下文");
     let out = format!("{}", rep);
     assert!(out.contains("上层上下文"));
+  }
+
+  #[test]
+  fn remote_payload_roundtrip_and_display() {
+    // 构造来自远端的 External 错误
+    let e = Error::from_remote_payload(
+      Some("gateway::GatewayError"),
+      "downstream failed",
+      Some("bt-remote".to_string()),
+    );
+
+    // kind 和 remote_backtrace 可被读取
+    assert_eq!(e.external_kind(), Some("gateway::GatewayError"));
+    assert_eq!(e.external_remote_backtrace(), Some("bt-remote"));
+
+    // to_remote_payload 包含 type/message/backtrace
+    let v = e.to_remote_payload();
+    // debug print to inspect actual serialized payload during test run
+    eprintln!("to_remote_payload: {}", v);
+    assert_eq!(v["type"].as_str(), Some("gateway::GatewayError"));
+    let msg = v["message"].as_str().unwrap();
+    eprintln!("extracted message: {:?}", msg);
+    assert!(msg.contains("downstream failed"));
+    assert_eq!(v["backtrace"].as_str(), Some("bt-remote"));
+
+    // sanitized 不包含 backtrace
+    let vs = e.to_remote_payload_sanitized();
+    assert!(vs.get("backtrace").is_none());
+
+    // 把序列化的 payload 再解析回 Error（模拟从网络接收）
+    let s = v.to_string();
+    let parsed = Error::from_serialized_json(&s);
+    assert_eq!(parsed.external_kind(), Some("gateway::GatewayError"));
+    assert_eq!(parsed.external_remote_backtrace(), Some("bt-remote"));
+
+    // Display 中应包含上游消息与 remote_type 包装的上下文
+    let disp = format!("{}", e);
+    assert!(disp.contains("downstream failed"));
+    assert!(disp.contains("remote_type=gateway::GatewayError"));
   }
 }

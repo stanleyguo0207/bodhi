@@ -7,6 +7,124 @@ use super::types::Error;
 use eyre::Report;
 
 impl Error {
+  /// 构造来自远端/上游的 External 错误。
+  ///
+  /// - `kind`：上游错误类型标识，建议使用带命名空间的字符串，例如 "gateway::GatewayError"，便于跨服务识别与聚合。
+  /// - `msg`：上游错误的主要消息（会被放入 `eyre::Report`）。
+  /// - `remote_backtrace`：可选的上游回溯字符串（如果上游传回）。
+  ///
+  /// 此方法会使用 `eyre::eyre!(msg)` 构造一个 `Report`，并在 Report 上附加一条 `remote_type=...` 的 wrap 上下文，
+  /// 以便在 Display/日志中保留上游类型信息。字段 `kind` 与 `remote_backtrace` 会填入对应结构体字段，
+  /// 便于接收端访问或选择性序列化。
+  pub fn from_remote_payload(
+    kind: Option<&str>,
+    msg: &str,
+    remote_backtrace: Option<String>,
+  ) -> Self {
+    let message = msg.to_string();
+    // 为确保 report 的 Display 中包含上游的原始消息（便于序列化/日志），
+    // 我们把原始消息放入一个可识别的前缀 `remote_msg=...` 中。
+    // 这样即使 eyre 的默认格式层次有所不同，序列化的 `message` 字段仍包含可搜索的上游文本。
+    let mut report = eyre::eyre!(format!("remote_msg={}", message));
+    if let Some(k) = kind {
+      report = report.wrap_err(format!("remote_type={}", k));
+    }
+
+    Error::External {
+      report,
+      kind: kind.map(|s| s.to_string()),
+      remote_backtrace,
+      remote_message: Some(message),
+    }
+  }
+
+  /// 把 `Error`（主要针对 `External`）序列化为一个 JSON 对象，方便跨进程/跨语言传输。
+  ///
+  /// 默认行为：
+  /// - `type` 字段保存 `kind`（如果存在）。
+  /// - `message` 字段保存 `Display` 格式的 report（包含上下文与 wrap 添加的信息）。
+  /// - `backtrace` 字段保存 `remote_backtrace`（如果存在）。
+  ///
+  /// 注意事项 / 脱敏策略：
+  /// - `to_remote_payload` 会包含 `backtrace`（如果有），适合在受信任服务之间传输或调试环境下使用。
+  /// - 在 production 路径上，推荐使用 `to_remote_payload_sanitized`，该函数不会包含 `backtrace`，以避免泄露敏感信息或产生过大的负载。
+  pub fn to_remote_payload(&self) -> serde_json::Value {
+    match self {
+      Error::External {
+        report,
+        kind,
+        remote_backtrace,
+        remote_message,
+      } => {
+        // 优先使用 explicit 存储的 remote_message（如果存在），否则尝试从 report 的 Display 中提取。
+        let msg = if let Some(m) = remote_message.clone() {
+          m
+        } else {
+          let full = format!("{}", report);
+          if let Some(idx) = full.find("remote_msg=") {
+            let start = idx + "remote_msg=".len();
+            let rest = &full[start..];
+            rest
+              .split(|c| c == '\n' || c == '\r')
+              .next()
+              .unwrap_or(rest)
+              .trim()
+              .to_string()
+          } else {
+            full
+          }
+        };
+
+        serde_json::json!({
+          "type": kind.clone(),
+          "message": msg,
+          "backtrace": remote_backtrace,
+        })
+      }
+      // 非 External 的错误转换为一个简单的 message-only 对象
+      other => serde_json::json!({
+        "type": null,
+        "message": format!("{}", other),
+      }),
+    }
+  }
+
+  /// 生成一个对外更安全的 JSON 表示：不会包括 `remote_backtrace` 字段，适合 production 场景。
+  pub fn to_remote_payload_sanitized(&self) -> serde_json::Value {
+    match self {
+      Error::External {
+        report,
+        kind,
+        remote_message,
+        ..
+      } => {
+        let msg = if let Some(m) = remote_message.clone() {
+          m
+        } else {
+          let full = format!("{}", report);
+          if let Some(idx) = full.find("remote_msg=") {
+            full[idx + "remote_msg=".len()..]
+              .split(|c| c == '\n' || c == '\r')
+              .next()
+              .unwrap_or("")
+              .trim()
+              .to_string()
+          } else {
+            full
+          }
+        };
+
+        serde_json::json!({
+          "type": kind.clone(),
+          "message": msg,
+        })
+      }
+      other => serde_json::json!({
+        "type": null,
+        "message": format!("{}", other),
+      }),
+    }
+  }
   /// 将任意实现 `std::error::Error + Send + Sync + 'static` 的错误转换为 `Error::External`。
   pub fn from_any<E>(e: E) -> Self
   where
@@ -17,6 +135,7 @@ impl Error {
       report: Report::from(e),
       kind: Some(std::any::type_name::<E>().to_string()),
       remote_backtrace: None,
+      remote_message: None,
     }
   }
 
@@ -35,6 +154,7 @@ impl Error {
       report,
       kind: Some(std::any::type_name::<E>().to_string()),
       remote_backtrace: None,
+      remote_message: None,
     }
   }
 
@@ -66,7 +186,8 @@ impl Error {
     match serde_json::from_str::<RemoteErr>(s) {
       Ok(r) => {
         let kind = r.type_.or(r.error_type);
-        let message = r.message.unwrap_or_else(|| s.to_string());
+        let remote_msg = r.message.clone();
+        let message = remote_msg.clone().unwrap_or_else(|| s.to_string());
         let remote_bt = r.backtrace;
 
         // 把 message 和 kind 放入 Report；把原始 backtrace 存到 remote_backtrace 字段
@@ -79,6 +200,7 @@ impl Error {
           report,
           kind,
           remote_backtrace: remote_bt,
+          remote_message: remote_msg,
         }
       }
       Err(_) => Error::service(s.to_string()),
