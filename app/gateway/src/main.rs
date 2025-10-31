@@ -10,11 +10,12 @@ fn main() -> bodhi::Result<()> {
 
   // Gateway 的错误类型已移入 `error` 模块。
 
-  // 模拟 gateway 产生错误并希望通过网络发送
-  let gw_err = GatewayError {
-    code: 403,
-    message: "forbidden".into(),
-  };
+  // 使用预定义的全局错误构造器
+  let gw_err = GatewayError::forbidden();
+
+  // 另外演示带自定义消息的预定义错误
+  let not_found = GatewayError::not_found("player 42 not found");
+  let internal = GatewayError::internal("db connection lost");
 
   // 方案 A：发送结构化 JSON 描述远端错误（常见模式）
   // 示例负载结构：{ "type": "GatewayError", "message": "forbidden" }
@@ -33,6 +34,13 @@ fn main() -> bodhi::Result<()> {
   // 使用 `bodhi` crate 提供的辅助函数直接转换。
   let be2 = bodhi::Error::from_any(gw_err);
   println!("Direct converted Error: {be2:#?}");
+
+  // 展示其它全局错误的序列化/转换
+  println!("NotFound payload: {}", not_found.to_remote_payload());
+  println!(
+    "Internal as bodhi::Error: {:#?}",
+    bodhi::Error::from_any(internal)
+  );
 
   // 为了让 color-eyre 打印像你期望的那样的错误链和回溯，我们构造一个小的调用链：
   // simulate_error -> server_main -> main。server_main 会把底层 IO 错误用中文上下文 wrap_err。
