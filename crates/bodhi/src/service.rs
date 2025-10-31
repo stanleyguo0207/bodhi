@@ -23,7 +23,7 @@ fn init_tracing() -> Result<()> {
     .with(fmt_layer)
     .with(ErrorLayer::default());
   tracing::subscriber::set_global_default(subscriber)
-    .map_err(|e| eyre::eyre!("set_global_default failed: {}", e))?;
+    .map_err(|e| crate::error::Error::from(eyre::eyre!("set_global_default failed: {}", e)))?;
   Ok(())
 }
 

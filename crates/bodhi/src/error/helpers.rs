@@ -20,6 +20,24 @@ impl Error {
     }
   }
 
+  /// 将任意错误与一段上下文信息组合为 `Error::External`。
+  ///
+  /// 该方法在库内使用 `eyre::Report` 构造带上下文的报告，然后把它封装到 `Error::External` 中，
+  /// 从而使上层调用方无需依赖 `eyre` 就能返回 `bodhi::Result`。
+  pub fn from_any_with_context<E, S>(e: E, ctx: S) -> Self
+  where
+    E: std::error::Error + Send + Sync + 'static,
+    S: Into<String>,
+  {
+    let mut report = Report::from(e);
+    report = report.wrap_err(ctx.into());
+    Error::External {
+      report,
+      kind: Some(std::any::type_name::<E>().to_string()),
+      remote_backtrace: None,
+    }
+  }
+
   /// 尝试从 JSON 字符串解析上层定义的错误结构。
   /// 期望形如 {"type": "...", "message": "...", "backtrace": "..."}。
   /// 解析成功后会把 message 放到 Report 的消息中，并在消息中附加 type 信息以便识别。

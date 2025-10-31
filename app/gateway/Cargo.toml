@@ -5,11 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-
 bodhi = { path = "../../crates/bodhi" }
 serde_json = { workspace = true }
 
-# For tracing and error reporting initialization in the binary
-eyre = { workspace = true, default-features = false, features = [
-  "auto-install",
-] }
+[features]
+default = []
+debug = ["bodhi/debug"]

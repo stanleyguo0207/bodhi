@@ -1,27 +1,14 @@
+mod error;
+
+use error::GatewayError;
+
 fn main() -> bodhi::Result<()> {
   // 使用 bodhi 提供的统一初始化函数，包含 tracing + 错误处理器（color-eyre）配置。
   bodhi::service::serve()?;
 
   println!("Hello, gateway example: convert and serialize errors");
 
-  // 示例：gateway 定义自己的错误类型
-  #[derive(Debug)]
-  struct GatewayError {
-    code: u16,
-    message: String,
-  }
-
-  impl std::fmt::Display for GatewayError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(
-        f,
-        "GatewayError(code={}, message={})",
-        self.code, self.message
-      )
-    }
-  }
-
-  impl std::error::Error for GatewayError {}
+  // Gateway 的错误类型已移入 `error` 模块。
 
   // 模拟 gateway 产生错误并希望通过网络发送
   let gw_err = GatewayError {
@@ -31,11 +18,7 @@ fn main() -> bodhi::Result<()> {
 
   // 方案 A：发送结构化 JSON 描述远端错误（常见模式）
   // 示例负载结构：{ "type": "GatewayError", "message": "forbidden" }
-  let remote_payload = serde_json::json!({
-    "type": "GatewayError",
-    "message": gw_err.to_string(),
-  })
-  .to_string();
+  let remote_payload = gw_err.to_remote_payload();
 
   println!("Serialized remote payload: {}", remote_payload);
 
@@ -60,11 +43,15 @@ fn main() -> bodhi::Result<()> {
   }
 
   fn server_main() -> bodhi::Result<()> {
-    use eyre::WrapErr;
-
-    // 当 simulate_error 返回 Err 时，wrap_err 会把中文上下文加入到 eyre 的 Report 中
-    simulate_error().wrap_err("无法读取配置文件 config.toml")?;
-    Ok(())
+    // 将底层 IO 错误转换为 bodhi::Error 并附加上下文信息，
+    // 这样上层二进制无需直接引用 `eyre`。
+    match simulate_error() {
+      Ok(_) => Ok(()),
+      Err(e) => Err(bodhi::Error::from_any_with_context(
+        e,
+        "无法读取配置文件 config.toml",
+      )),
+    }
   }
 
   // 直接把 server_main 的结果返回给 runtime；当发生 Err(Report) 时，color-eyre 会负责漂亮地打印

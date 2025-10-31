@@ -11,10 +11,7 @@ pub fn parse_args() -> Result<Args> {
   let cli = Cli::parse();
 
   if !cli.config_dir.exists() {
-    return Err(eyre!(
-      "config dir '{}' does not exist",
-      cli.config_dir.display()
-    ));
+    return Err(eyre!("config dir '{}' does not exist", cli.config_dir.display()).into());
   }
 
   Ok(Args {

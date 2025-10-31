@@ -3,8 +3,11 @@
 //! 设计目标：高性能、支持调用链与上下文（通过 `eyre::Report` 与 `tracing`），并在
 //! debug 模式下启用彩色错误报告（`color-eyre`）。
 
-/// 为当前 crate 定义的 Result 简写，使用 `eyre::Report` 作为错误类型。
-pub type Result<T> = std::result::Result<T, eyre::Report>;
+/// 为当前 crate 定义的 Result 简写，使用库公开的 `Error` 枚举作为错误类型。
+///
+/// 这样可以把 `eyre` 的使用收敛在 `crates/bodhi` 内部，上层 crate 只需依赖 `bodhi::Error` 而
+/// 无需直接依赖 `eyre`。
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// 业务错误枚举：使用 `thiserror` 派生 Display/Error，业务侧可直接匹配这些变体。
 #[derive(thiserror::Error, Debug)]
