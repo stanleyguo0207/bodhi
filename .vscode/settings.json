@@ -6,7 +6,10 @@
   ],
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": "active",
-  "editor.minimap.maxColumn": 50,
+  "editor.minimap.enabled": false,
+  "files.trimTrailingWhitespace": true,
+  "files.autoSave": "onWindowChange",
+  "explorer.confirmDelete": false,
   // debug
   "debug.allowBreakpointsEverywhere": true,
   // git
@@ -16,6 +19,9 @@
   "rust-analyzer.server.extraEnv": {
     "CARGO_UNSTABLE_SPARSE_REGISTRY": "true",
   },
+  // lldb
+  "lldb.displayFormat": "auto",
+  "lldb.dereferencePointers": true,
   // protobuf
   "[proto3]": {
     "editor.defaultFormatter": "zxh404.vscode-proto3",
