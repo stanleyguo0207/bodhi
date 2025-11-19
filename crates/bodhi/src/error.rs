@@ -1,15 +1,12 @@
-//! 错误模块根：拆分实现并导出常用类型
-//!
-//! 结构：
-//! - `types.rs`：定义 `Error`、`BoxErr` 和内部 MessageError 类型。
-//! - `helpers.rs`：实现 `Error` 的 helper 方法（from_any、from_serialized_json、external_kind）。
-//! - `impls.rs`：为常见类型实现 `From<...> for Error`.
+mod error_impl;
+pub mod ext;
+mod filters_builder_impl;
+mod filters_impl;
+mod macros;
+pub mod result;
+pub mod types;
 
-mod helpers;
-mod impls;
-mod types;
+use std::sync::{Arc, OnceLock};
+use types::Filters;
 
-// 将核心类型导出到 `bodhi::error::Error`。
-pub use types::Error;
-// 将 Result 简写导出到 `bodhi::error::Result`。
-pub use types::Result;
+static ERROR_FILTERS: OnceLock<Arc<Filters>> = OnceLock::new();

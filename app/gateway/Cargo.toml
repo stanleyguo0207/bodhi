@@ -6,8 +6,3 @@ rust-version.workspace = true
 
 [dependencies]
 bodhi = { path = "../../crates/bodhi" }
-serde_json = { workspace = true }
-
-[features]
-default = []
-debug = ["bodhi/debug"]
