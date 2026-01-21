@@ -1,11 +1,4 @@
 #[macro_export]
-macro_rules! const_assert_range {
-  ($cond:expr, $msg:expr) => {
-    const _: () = assert!($cond, $msg);
-  };
-}
-
-#[macro_export]
 macro_rules! define_static_errors {
   (
     $(
@@ -31,6 +24,13 @@ macro_rules! define_static_errors {
               )
             );
           };
+
+          $crate::paste::paste! {
+            #[doc(hidden)]
+            #[unsafe(no_mangle)]
+            #[used]
+            pub static [<__BODHI_ERROR_CODE_UNIQUE_ $code>]: () = ();
+          }
 
           $crate::paste::paste! {
             #[doc = concat!("Error metadata: `", stringify!($code), "`, `", $msg, "`")]

@@ -1,4 +1,14 @@
+use std::sync::Once;
+
 use bodhi::{Error, Result, WrapContext};
+
+static TEST_INIT: Once = Once::new();
+
+fn init_test_error_system() {
+  TEST_INIT.call_once(|| {
+    bodhi::init().unwrap();
+  });
+}
 
 bodhi::define_static_errors!(
   testerr (999 .. 999) {
@@ -33,7 +43,7 @@ fn backtrace() {
 
 #[test]
 fn filter() {
-  bodhi::init().unwrap();
+  init_test_error_system();
 
   if let Err(e) = g3() {
     // debug
@@ -46,7 +56,7 @@ fn filter() {
 
 #[test]
 fn stderror() {
-  bodhi::init().unwrap();
+  init_test_error_system();
 
   fn g1() -> Result<()> {
     let e = std::io::Error::new(std::io::ErrorKind::Other, "io failed");
@@ -74,7 +84,7 @@ fn stderror() {
 
 #[test]
 fn stdresult() {
-  bodhi::init().unwrap();
+  init_test_error_system();
 
   fn g1() -> std::result::Result<(), std::io::Error> {
     Err(std::io::Error::new(
@@ -104,7 +114,7 @@ fn stdresult() {
 
 #[test]
 fn from_stderror() {
-  bodhi::init().unwrap();
+  init_test_error_system();
 
   fn g1() -> Result<()> {
     Err(std::io::Error::new(std::io::ErrorKind::Other, "std io failed").into())
