@@ -1,22 +1,13 @@
 use std::sync::Arc;
 
-use crate::error::{ERROR_FILTERS, Filters};
-use crate::{BODHIERR_BUILD, Error, FiltersBuilder, Frame, Result};
+use crate::error::types::{ERROR_FILTERS, Filters, FiltersBuilder};
+use crate::{BODHIERR_BUILD, Error, Frame, Result};
 
 impl FiltersBuilder {
   pub fn new() -> Self {
     Self {
-      frame_filters: Vec::new(),
       frames_filters: Vec::new(),
     }
-  }
-
-  pub fn register_frame_filter<F>(mut self, filter: F) -> Self
-  where
-    F: Fn(&Frame) -> bool + Send + Sync + 'static,
-  {
-    self.frame_filters.push(Box::new(filter));
-    self
   }
 
   pub fn register_frames_filter<F>(mut self, filter: F) -> Self
@@ -29,8 +20,7 @@ impl FiltersBuilder {
 
   pub fn build(self) -> Result<()> {
     let filters = Filters {
-      frame_filters: self.frame_filters.into(),
-      frames_filters: self.frames_filters.into(),
+      frames_filters: Box::leak(self.frames_filters.into_boxed_slice()),
     };
 
     ERROR_FILTERS.set(Arc::new(filters)).map_err(|_| {

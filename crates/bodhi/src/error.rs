@@ -6,7 +6,6 @@ mod macros;
 pub mod result;
 pub mod types;
 
-use std::sync::{Arc, OnceLock};
-use types::Filters;
-
-static ERROR_FILTERS: OnceLock<Arc<Filters>> = OnceLock::new();
+pub use ext::WrapContext;
+pub use result::Result;
+pub use types::{Error, ErrorMeta, Frame, FramesFilter};

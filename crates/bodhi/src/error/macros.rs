@@ -18,11 +18,10 @@ macro_rules! define_static_errors {
   ) => {
     $(
       pub mod $category {
-        // use super::*;
         $(
           const _: () = {
             assert!(
-              $code >= $range_start && $code < $range_end,
+              $code >= $range_start && $code <= $range_end,
               concat!(
                 "Error code out of range for ",
                 stringify!($category),

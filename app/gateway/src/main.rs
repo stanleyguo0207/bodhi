@@ -18,22 +18,63 @@ fn f3() -> Result<()> {
   Ok(())
 }
 
+fn f4() -> Result<()> {
+  let e = std::io::Error::new(std::io::ErrorKind::Other, "io failed");
+  Err(Error::from_std(e).capture_backtrace())
+}
+
+fn f5() -> Result<()> {
+  f4().wrap_context("f5")?;
+  Ok(())
+}
+
+fn f6() -> Result<()> {
+  f5().wrap_context("f6")?;
+  Ok(())
+}
+
+fn f7() -> std::result::Result<(), std::io::Error> {
+  Err(std::io::Error::new(
+    std::io::ErrorKind::Other,
+    "std io failed",
+  ))
+}
+
+fn f8() -> Result<()> {
+  f7().wrap_context("f8")?;
+  Ok(())
+}
+
+fn f9() -> Result<()> {
+  f8().wrap_context("f9")?;
+  Ok(())
+}
+
 fn main() -> Result<()> {
   println!("Hello, Gateway!");
 
-  // let err = Error::new(&bodhi::BODHIERR_EXTERNAL).capture_backtrace();
-  // println!("Full Error:\n{}", err);
-
-  // let err2 = Error::with_source(std::io::Error::new(
-  //   std::io::ErrorKind::Other,
-  //   "Underlying IO error",
-  // ));
-  // println!("External Error:\n{}", err2);
-
-  // println!("f3 result: {}", f3().err().unwrap());
-
   if let Err(e) = f3() {
+    // debug
+    println!("Error from f3:\n{:?}", e);
+
+    // display
     println!("Error from f3:\n{}", e);
+  }
+
+  if let Err(e) = f6() {
+    // debug
+    println!("Error from f6:\n{:?}", e);
+
+    // display
+    println!("Error from f6:\n{}", e);
+  }
+
+  if let Err(e) = f9() {
+    // debug
+    println!("Error from f9:\n{:?}", e);
+
+    // display
+    println!("Error from f9:\n{}", e);
   }
 
   Ok(())

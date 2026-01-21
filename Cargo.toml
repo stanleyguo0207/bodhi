@@ -7,6 +7,6 @@ members = ["app/gateway", "crates/bodhi"]
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.89.0"
+rust-version = "1.92.0"
 
 [workspace.dependencies]

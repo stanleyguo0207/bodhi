@@ -7,4 +7,3 @@ rust-version.workspace = true
 [dependencies]
 backtrace = "0.3.76"
 paste = "1.0.15"
-tracing-error = "0.2"

@@ -1,27 +1,21 @@
-use backtrace::Backtrace;
 use std::{
   error::Error as StdError,
-  fmt::{self, Display},
+  fmt::{self, Debug, Display},
   sync::Arc,
 };
 
-use tracing_error::SpanTrace;
+use backtrace::Backtrace;
 
-use crate::error::{ERROR_FILTERS, types::ErrorInner};
-use crate::{BODHIERR_SYS, Error, ErrorMeta, Frame};
+use crate::BODHIERR_SYS;
+use crate::error::types::{ERROR_FILTERS, Error, ErrorInner, ErrorMeta, Frame};
 
 impl Error {
-  #[track_caller]
   pub fn new(meta: &'static ErrorMeta) -> Self {
-    let location = std::panic::Location::caller();
-
     Self {
       inner: Arc::new(ErrorInner {
         meta,
         source: None,
-        location: Some(location),
         backtrace: None,
-        span_trace: SpanTrace::capture().into(),
         contexts: None,
       }),
     }
@@ -38,14 +32,6 @@ impl Error {
   pub fn capture_backtrace(mut self) -> Self {
     Arc::get_mut(&mut self.inner).map(|inner| {
       inner.backtrace = Some(Backtrace::new());
-    });
-
-    self
-  }
-
-  pub fn capture_span_trace(mut self) -> Self {
-    Arc::get_mut(&mut self.inner).map(|inner| {
-      inner.span_trace = Some(SpanTrace::capture());
     });
 
     self
@@ -72,21 +58,18 @@ impl Error {
     self.wrap_context(f())
   }
 
-  fn debug<E>(&self, error: &(dyn StdError + 'static), f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "code: {}, desc: {}", self.code(), self.desc())?;
+  fn debug(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "code: {}, desc: {}\n", self.code(), self.desc())?;
+
+    if let Some(source) = &self.inner.source {
+      write!(f, "Caused by: {:?}\n", source)?;
+    }
 
     if let Some(contexts) = &self.inner.contexts {
       write!(f, "Contexts:\n")?;
       for (n, ctx) in contexts.iter().enumerate() {
         write!(f, "  {}: {}\n", n, ctx)?;
       }
-    }
-
-    write!(f, "Location:\n")?;
-    if let Some(location) = &self.inner.location {
-      write!(f, "  {}:{}\n", location.file(), location.line())?;
-    } else {
-      write!(f, "  <unknown>\n")?;
     }
 
     if let Some(backtrace) = &self.inner.backtrace {
@@ -136,46 +119,37 @@ impl Error {
     Ok(())
   }
 
-  fn display(&self, error: &(dyn StdError + 'static), f: &mut fmt::Formatter<'_>) -> fmt::Result {
+  fn display(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "code: {}, desc: {}", self.code(), self.desc())?;
+    if let Some(source) = &self.inner.source {
+      write!(f, ", error: {}", source)?;
+    }
     Ok(())
   }
 
-  #[track_caller]
   pub fn from_std<E>(error: E) -> Self
   where
     E: StdError + Send + Sync + 'static,
   {
-    let location = std::panic::Location::caller();
-
     Self {
       inner: Arc::new(ErrorInner {
         meta: &BODHIERR_SYS,
         source: Some(Box::new(error)),
-        location: Some(location),
         backtrace: None,
-        span_trace: SpanTrace::capture().into(),
         contexts: None,
       }),
     }
   }
+}
 
-  #[track_caller]
-  pub fn from_msg<D, E>(msg: D, error: E) -> Self
-  where
-    D: Display + Send + Sync + 'static,
-    E: StdError + Send + Sync + 'static,
-  {
-    let location = std::panic::Location::caller();
+impl Debug for Error {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    self.debug(f)
+  }
+}
 
-    Self {
-      inner: Arc::new(ErrorInner {
-        meta: &BODHIERR_SYS,
-        source: Some(Box::new(error)),
-        location: Some(location),
-        backtrace: None,
-        span_trace: SpanTrace::capture().into(),
-        contexts: Some(vec![msg.to_string()]),
-      }),
-    }
+impl Display for Error {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    self.display(f)
   }
 }
