@@ -19,6 +19,7 @@ impl Error {
         contexts: None,
       }),
     }
+    .capture_backtrace()
   }
 
   pub fn code(&self) -> u32 {
@@ -29,7 +30,7 @@ impl Error {
     self.inner.meta.1
   }
 
-  pub fn capture_backtrace(mut self) -> Self {
+  fn capture_backtrace(mut self) -> Self {
     Arc::get_mut(&mut self.inner).map(|inner| {
       inner.backtrace = Some(Backtrace::new());
     });
@@ -142,6 +143,7 @@ impl Error {
         contexts: None,
       }),
     }
+    .capture_backtrace()
   }
 }
 
@@ -154,5 +156,14 @@ impl Debug for Error {
 impl Display for Error {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     self.display(f)
+  }
+}
+
+impl<E> From<E> for Error
+where
+  E: StdError + Send + Sync + 'static,
+{
+  fn from(error: E) -> Self {
+    Error::from_std(error)
   }
 }

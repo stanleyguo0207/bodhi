@@ -25,11 +25,9 @@ impl FiltersBuilder {
       frames_filters: Box::leak(self.frames_filters.into_boxed_slice()),
     };
 
-    ERROR_FILTERS.set(Arc::new(filters)).map_err(|_| {
-      Error::new(&BODHIERR_BUILD)
-        .wrap_context("error filters setup failed")
-        .capture_backtrace()
-    })
+    ERROR_FILTERS
+      .set(Arc::new(filters))
+      .map_err(|_| Error::new(&BODHIERR_BUILD).wrap_context("error filters setup failed"))
   }
 }
 
