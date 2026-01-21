@@ -53,6 +53,8 @@ fn f9() -> Result<()> {
 fn main() -> Result<()> {
   println!("Hello, Gateway!");
 
+  bodhi::init()?;
+
   if let Err(e) = f3() {
     // debug
     println!("Error from f3:\n{:?}", e);

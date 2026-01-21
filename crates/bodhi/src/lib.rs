@@ -6,3 +6,8 @@ pub use paste;
 
 pub use error::*;
 pub use globals::*;
+
+pub fn init() -> Result<()> {
+  error::init()?;
+  Ok(())
+}

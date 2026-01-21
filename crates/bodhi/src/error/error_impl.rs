@@ -59,10 +59,12 @@ impl Error {
   }
 
   fn debug(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "code: {}, desc: {}\n", self.code(), self.desc())?;
+    write!(f, "Meta:\n")?;
+    write!(f, "  code: {}, desc: {}\n", self.code(), self.desc())?;
 
     if let Some(source) = &self.inner.source {
-      write!(f, "Caused by: {:?}\n", source)?;
+      write!(f, "Error:\n")?;
+      write!(f, "  {:?}\n", source)?;
     }
 
     if let Some(contexts) = &self.inner.contexts {
@@ -92,6 +94,7 @@ impl Error {
         .map(|filters| filters.apply(&mut filtered_frames));
 
       if !filtered_frames.is_empty() {
+        write!(f, "BACKTRACE:\n")?;
         for frame in &filtered_frames {
           let file = frame.filename.as_ref().map(|path| path.display());
           let file: &dyn fmt::Display = if let Some(ref filename) = file {
@@ -102,7 +105,7 @@ impl Error {
 
           write!(
             f,
-            "  Frame {}: {} ({}:{})\n",
+            "  {}: {} ({}:{})\n",
             frame.n,
             frame
               .name
