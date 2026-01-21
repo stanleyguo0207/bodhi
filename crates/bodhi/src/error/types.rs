@@ -34,8 +34,23 @@ pub(in crate::error) struct ErrorInner {
   pub source: Option<Box<dyn StdError + Send + Sync + 'static>>,
   pub backtrace: Option<Backtrace>,
   pub contexts: Option<Vec<String>>,
+  pub children: Option<Vec<Error>>,
 }
 
 pub struct Error {
   pub(in crate::error) inner: Arc<ErrorInner>,
+}
+
+#[cfg(test)]
+mod _asserts {
+  use super::*;
+
+  trait _AssertSendSync {}
+  impl<T> _AssertSendSync for T where T: Send + Sync {}
+
+  fn _assert_error_is_send_sync<T: _AssertSendSync>() {}
+  #[test]
+  fn error_is_send_sync() {
+    _assert_error_is_send_sync::<Error>();
+  }
 }

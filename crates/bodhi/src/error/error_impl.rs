@@ -17,6 +17,7 @@ impl Error {
         source: None,
         backtrace: None,
         contexts: None,
+        children: None,
       }),
     }
     .capture_backtrace()
@@ -36,27 +37,6 @@ impl Error {
     });
 
     self
-  }
-
-  pub fn wrap_context<D>(mut self, context: D) -> Self
-  where
-    D: Display + Send + Sync + 'static,
-  {
-    let ctx_str = context.to_string();
-
-    Arc::get_mut(&mut self.inner).map(|inner| {
-      inner.contexts.get_or_insert_with(Vec::new).push(ctx_str);
-    });
-
-    self
-  }
-
-  pub fn wrap_context_with<F, D>(self, f: F) -> Self
-  where
-    F: FnOnce() -> D,
-    D: Display + Send + Sync + 'static,
-  {
-    self.wrap_context(f())
   }
 
   fn debug(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -120,6 +100,16 @@ impl Error {
       }
     }
 
+    if let Some(children) = &self.inner.children {
+      if !children.is_empty() {
+        write!(f, "CHILDREN:\n")?;
+        for (n, child) in children.iter().enumerate() {
+          write!(f, "CHILD=={}==:\n", n)?;
+          child.debug(f)?;
+        }
+      }
+    }
+
     Ok(())
   }
 
@@ -131,7 +121,34 @@ impl Error {
     Ok(())
   }
 
-  pub fn from_std<E>(error: E) -> Self
+  pub fn wrap_context<D>(mut self, context: D) -> Self
+  where
+    D: Display + Send + Sync + 'static,
+  {
+    let ctx_str = context.to_string();
+
+    Arc::get_mut(&mut self.inner).map(|inner| {
+      inner.contexts.get_or_insert_with(Vec::new).push(ctx_str);
+    });
+
+    self
+  }
+
+  pub fn wrap_context_with<F, D>(self, f: F) -> Self
+  where
+    F: FnOnce() -> D,
+    D: Display + Send + Sync + 'static,
+  {
+    self.wrap_context(f())
+  }
+
+  pub fn push_child(&mut self, child: Error) {
+    Arc::get_mut(&mut self.inner).map(|inner| {
+      inner.children.get_or_insert_with(Vec::new).push(child);
+    });
+  }
+
+  fn from_std<E>(error: E) -> Self
   where
     E: StdError + Send + Sync + 'static,
   {
@@ -141,6 +158,7 @@ impl Error {
         source: Some(Box::new(error)),
         backtrace: None,
         contexts: None,
+        children: None,
       }),
     }
     .capture_backtrace()

@@ -46,7 +46,7 @@ where
   {
     match self {
       Ok(value) => Ok(value),
-      Err(e) => Err(Error::from_std(e).wrap_context(context)),
+      Err(e) => Err(Into::<Error>::into(e).wrap_context(context)),
     }
   }
 
@@ -57,7 +57,7 @@ where
   {
     match self {
       Ok(value) => Ok(value),
-      Err(e) => Err(Error::from_std(e).wrap_context_with(f)),
+      Err(e) => Err(Into::<Error>::into(e).wrap_context_with(f)),
     }
   }
 }
