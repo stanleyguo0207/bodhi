@@ -1,0 +1,13 @@
+[gateway]
+listen_addr = "127.0.0.1:17000"
+max_connections = 20000
+
+[logging]
+file = "/var/log/game/gateway.log"
+level = "debug"
+
+[service]
+instance_id = 42
+
+[service.runtime]
+worker_threads = 16

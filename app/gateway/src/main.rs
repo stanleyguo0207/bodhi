@@ -1,3 +1,4 @@
+mod config;
 mod globals;
 
 use bodhi::{Error, Result, WrapContext};

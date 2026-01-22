@@ -1,0 +1,11 @@
+[gateway]
+listen_addr = "0.0.0.0:7000"
+max_connections = 100000
+
+[gateway.timeout]
+handshake_ms = 3000
+idle_ms = 60000
+
+[service]
+name = "gateway"
+zone_id = 1001

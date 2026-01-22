@@ -1,0 +1,8 @@
+[service]
+name = ""
+zone_id = 0
+instance_id = 0
+
+[service.runtime]
+worker_threads = 8
+tick_rate_ms = 50
