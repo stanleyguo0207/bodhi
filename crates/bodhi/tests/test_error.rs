@@ -200,3 +200,31 @@ fn test_has_meta() {
     assert!(e.has_meta(&TESTERR_TEST2));
   }
 }
+
+#[test]
+fn test_async_safe() {
+  init_test_error_system();
+
+  async fn g1() -> Result<()> {
+    Err(Error::new(&TESTERR_INVALID))
+  }
+
+  async fn g2() -> Result<()> {
+    g1().await.wrap_context("g2")?;
+    Ok(())
+  }
+
+  async fn g3() -> Result<()> {
+    g2().await.wrap_context("g3")?;
+    Ok(())
+  }
+
+  let rt = tokio::runtime::Runtime::new().unwrap();
+  if let Err(e) = rt.block_on(g3()) {
+    // debug
+    println!("Error from g3:\n{:?}", e);
+
+    // display
+    println!("Error from g3:\n{}", e);
+  }
+}
