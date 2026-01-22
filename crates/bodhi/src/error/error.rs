@@ -7,7 +7,37 @@ use std::{
 use backtrace::Backtrace;
 
 use crate::BODHIERR_SYS;
-use crate::error::types::{ERROR_FILTERS, Error, ErrorInner, ErrorMeta, Frame};
+
+use super::filters::ERROR_FILTERS;
+use super::frame::Frame;
+
+pub struct ErrorMeta(pub u32, pub &'static str);
+
+pub(in crate::error) struct ErrorInner {
+  pub meta: &'static ErrorMeta,
+  pub source: Option<Box<dyn StdError + Send + Sync + 'static>>,
+  pub backtrace: Option<Backtrace>,
+  pub contexts: Option<Vec<String>>,
+  pub children: Option<Vec<Error>>,
+}
+
+pub struct Error {
+  pub(in crate::error) inner: Arc<ErrorInner>,
+}
+
+#[cfg(test)]
+mod _asserts {
+  use super::*;
+
+  trait _AssertSendSync {}
+  impl<T> _AssertSendSync for T where T: Send + Sync {}
+
+  fn _assert_error_is_send_sync<T: _AssertSendSync>() {}
+  #[test]
+  fn error_is_send_sync() {
+    _assert_error_is_send_sync::<Error>();
+  }
+}
 
 impl Error {
   pub fn new(meta: &'static ErrorMeta) -> Self {
@@ -146,6 +176,26 @@ impl Error {
     Arc::get_mut(&mut self.inner).map(|inner| {
       inner.children.get_or_insert_with(Vec::new).push(child);
     });
+  }
+
+  pub fn is_same_meta(&self, meta: &'static ErrorMeta) -> bool {
+    return self.code() == meta.0;
+  }
+
+  pub fn has_meta(&self, meta: &'static ErrorMeta) -> bool {
+    if self.is_same_meta(meta) {
+      return true;
+    }
+
+    if let Some(children) = &self.inner.children {
+      for child in children {
+        if child.is_same_meta(meta) {
+          return true;
+        }
+      }
+    }
+
+    false
   }
 
   fn from_std<E>(error: E) -> Self

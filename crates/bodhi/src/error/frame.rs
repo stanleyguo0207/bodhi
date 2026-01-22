@@ -1,4 +1,13 @@
-use crate::error::types::Frame;
+use std::path::PathBuf;
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct Frame {
+  pub n: usize,
+  pub name: Option<String>,
+  pub lineno: Option<u32>,
+  pub filename: Option<PathBuf>,
+}
 
 impl Frame {
   pub fn is_post_panic_code(&self) -> bool {

@@ -143,3 +143,60 @@ fn test_child_errors() {
     println!("Error from g3:\n{}", e);
   }
 }
+
+#[test]
+fn test_is_same_meta() {
+  init_test_error_system();
+
+  fn g1() -> Result<()> {
+    Err(Error::new(&TESTERR_TEST1))
+  }
+
+  fn g2() -> Result<()> {
+    g1().wrap_context("g2")?;
+    Ok(())
+  }
+
+  fn g3() -> Result<()> {
+    g2().wrap_context("g3")?;
+    Ok(())
+  }
+
+  if let Err(e) = g3() {
+    assert!(e.is_same_meta(&TESTERR_TEST1));
+    assert!(!e.is_same_meta(&TESTERR_TEST2));
+  }
+}
+
+#[test]
+fn test_has_meta() {
+  init_test_error_system();
+
+  fn g1() -> Result<()> {
+    let mut parent_err = Error::new(&TESTERR_INVALID).wrap_context("parent error");
+
+    let child_err1 = Error::new(&TESTERR_TEST1).wrap_context("child error 1");
+    let child_err2 = Error::new(&TESTERR_TEST2).wrap_context("child error 2");
+
+    parent_err.push_child(child_err1);
+    parent_err.push_child(child_err2);
+
+    Err(parent_err)
+  }
+
+  fn g2() -> Result<()> {
+    g1().wrap_context("g2")?;
+    Ok(())
+  }
+
+  fn g3() -> Result<()> {
+    g2().wrap_context("g3")?;
+    Ok(())
+  }
+
+  if let Err(e) = g3() {
+    assert!(e.has_meta(&TESTERR_INVALID));
+    assert!(e.has_meta(&TESTERR_TEST1));
+    assert!(e.has_meta(&TESTERR_TEST2));
+  }
+}

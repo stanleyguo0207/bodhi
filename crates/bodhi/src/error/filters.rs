@@ -1,7 +1,28 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
-use crate::error::types::{ERROR_FILTERS, Filters, FiltersBuilder};
-use crate::{BODHIERR_BUILD, Error, Frame, Result};
+use crate::BODHIERR_BUILD;
+
+use super::{Error, Result, frame::Frame};
+
+pub type FramesFilter = dyn Fn(&mut Vec<&Frame>) + Send + Sync + 'static;
+
+pub(in crate::error) struct Filters {
+  pub frames_filters: &'static [Box<FramesFilter>],
+}
+
+pub(in crate::error) static ERROR_FILTERS: OnceLock<Arc<Filters>> = OnceLock::new();
+
+impl Filters {
+  pub fn apply(&self, frames: &mut Vec<&Frame>) {
+    for fliter in self.frames_filters {
+      fliter(frames);
+    }
+  }
+}
+
+pub(in crate::error) struct FiltersBuilder {
+  pub frames_filters: Vec<Box<FramesFilter>>,
+}
 
 impl FiltersBuilder {
   pub fn new() -> Self {

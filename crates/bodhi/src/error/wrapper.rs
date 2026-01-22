@@ -1,6 +1,6 @@
 use std::{error::Error as StdError, fmt::Display, result::Result as StdResult};
 
-use crate::error::{Error, Result};
+use super::{error::Error, result::Result};
 
 pub trait WrapContext<T> {
   fn wrap_context<D>(self, context: D) -> Result<T>
