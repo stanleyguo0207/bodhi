@@ -8,6 +8,9 @@ rust-version.workspace = true
 backtrace = "0.3.76"
 clap = { version = "4.5.54", features = ["derive"] }
 paste = "1.0.15"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.149"
+serde_yaml = "0.9.34"
 tokio = { version = "1.28.2", features = ["full"] }
 toml = "0.9.8"
 walkdir = "2.5.0"
@@ -15,3 +18,7 @@ walkdir = "2.5.0"
 [[bin]]
 name = "gen_cfg"
 path = "tools/gen_cfg/main.rs"
+
+[[bin]]
+name = "config_gen"
+path = "tools/config_gen/main.rs"

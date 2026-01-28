@@ -6,7 +6,8 @@ use clap::{Parser, Subcommand};
 #[command(version, about, long_about = None)]
 pub(crate) struct Args {
   /// Configuration file path
-  #[arg(long,
+  #[arg(
+    long,
     value_name = "FILE",
     value_parser = clap::value_parser!(PathBuf),
     help = "Path to configuration file"
