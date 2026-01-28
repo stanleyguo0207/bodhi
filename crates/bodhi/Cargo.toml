@@ -22,3 +22,11 @@ path = "tools/gen_cfg/main.rs"
 [[bin]]
 name = "config_gen"
 path = "tools/config_gen/main.rs"
+
+[[bin]]
+name = "cfggen"
+path = "tools/cfggen/main.rs"
+
+[[bin]]
+name = "cfggen2"
+path = "tools/cfggen2/main.rs"

@@ -1,8 +1,0 @@
-[logging]
-file = ""
-level = "info"
-
-[logging.rotate]
-enabled = true
-max_backups = 10
-max_size_mb = 100

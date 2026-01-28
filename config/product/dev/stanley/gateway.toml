@@ -1,0 +1,14 @@
+[gateway]
+keep_alive = true
+url = "http://localhost:8080"
+
+[gateway.auth]
+token = ""
+
+[infra.logging]
+format = ""
+level = "info"
+
+[infra.service]
+name = ""
+zone = "stanley"

@@ -1,0 +1,26 @@
+# ====================================
+# env
+# ====================================
+
+[env]
+name = "dev"
+
+# ====================================
+# infra
+# ====================================
+
+[infra.logging]
+level = "debug"
+
+[infra.service]
+zone = "stanley"
+
+# ====================================
+# gateway
+# ====================================
+
+[gateway.infra.logging]
+level = "info"
+
+[gateway.auth]
+token = "jkUINdmqpgnbsahdjHGY*+d1n213"
