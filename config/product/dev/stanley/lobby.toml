@@ -1,9 +1,0 @@
-[infra.logging]
-format = ""
-level = "debug"
-
-[infra.service]
-name = ""
-zone = "stanley"
-
-[lobby]

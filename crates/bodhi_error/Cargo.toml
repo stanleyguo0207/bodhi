@@ -1,0 +1,13 @@
+[package]
+name = "bodhi_error"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1"
+backtrace = "0.3"
+paste = "1"
+
+[dev-dependencies]
+tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros", "sync"] }

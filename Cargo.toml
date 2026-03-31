@@ -3,10 +3,8 @@
 
 [workspace]
 resolver = "3"
-members = ["app/gateway", "crates/bodhi"]
+members = ["crates/*"]
 
 [workspace.package]
 edition = "2024"
 rust-version = "1.92.0"
-
-[workspace.dependencies]
