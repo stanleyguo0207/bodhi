@@ -21,6 +21,32 @@ pub fn ensure_config_dir(config_dir: &Path) -> Result<()> {
   }
 }
 
+pub fn find_config_dir(start_dir: &Path, config_dir: &Path) -> Result<PathBuf> {
+  if config_dir.is_absolute() {
+    ensure_config_dir(config_dir)?;
+    return Ok(config_dir.to_path_buf());
+  }
+
+  for ancestor in start_dir.ancestors() {
+    let candidate = ancestor.join(config_dir);
+    if candidate.is_dir() {
+      return Ok(candidate);
+    }
+  }
+
+  Err(
+    Error::new(CONFIGERR_CONFIGDIRNOTFOUND)
+      .wrap_context("find config directory failed")
+      .wrap_context_with(|| {
+        format!(
+          "start_dir={} config_dir={}",
+          start_dir.display(),
+          config_dir.display()
+        )
+      }),
+  )
+}
+
 pub fn discover_services(config_dir: &Path) -> Result<Vec<String>> {
   let service_dir = config_dir.join("template").join("service");
   list_toml_stems(&service_dir, CONFIGERR_TEMPLATEDIRNOTFOUND)

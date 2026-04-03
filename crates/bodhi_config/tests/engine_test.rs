@@ -63,6 +63,41 @@ fn engine_should_resolve_profile_and_service_overrides() {
 }
 
 #[test]
+fn engine_should_find_config_dir_from_ancestor_directory() {
+  let tempdir = tempdir().expect("create tempdir");
+  let workspace_dir = tempdir.path().join("workspace");
+  let config_dir = workspace_dir.join("config");
+  let service_dir = workspace_dir.join("app/chat/server/gateway");
+
+  fs::create_dir_all(config_dir.join("template/infra")).expect("create template infra dir");
+  fs::create_dir_all(config_dir.join("template/service")).expect("create template service dir");
+  fs::create_dir_all(config_dir.join("profile")).expect("create profile dir");
+  fs::create_dir_all(&service_dir).expect("create service dir");
+
+  fs::write(
+    config_dir.join("template/infra/service.toml"),
+    "[service]\nname = \"default\"\n",
+  )
+  .expect("write infra service");
+  fs::write(
+    config_dir.join("template/service/gateway.toml"),
+    "[infra.service]\nname = \"gateway\"\n[server]\nhttp_port = 18080\n",
+  )
+  .expect("write gateway template");
+  fs::write(config_dir.join("profile/dev.toml"), "").expect("write dev profile");
+
+  let engine = ConfigEngine::find_from(&service_dir, "config").expect("find config engine");
+  let service_name: String = engine
+    .resolve("dev", "gateway")
+    .expect("resolve gateway config")
+    .extract("service.name")
+    .expect("extract service name");
+
+  assert_eq!(engine.config_dir(), config_dir.as_path());
+  assert_eq!(service_name, "gateway");
+}
+
+#[test]
 fn engine_should_generate_multiple_formats() {
   let tempdir = tempdir().expect("create tempdir");
   let config_dir = tempdir.path().join("config");

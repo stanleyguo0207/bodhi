@@ -1,5 +1,6 @@
 //! 配置引擎模块
 
+use std::env;
 use std::path::{Path, PathBuf};
 
 use bodhi_error::prelude::*;
@@ -11,7 +12,7 @@ use crate::codegen::{
   write_rust_types,
 };
 use crate::errcode::configerr::*;
-use crate::loader::{discover_profiles, discover_services, ensure_config_dir};
+use crate::loader::{discover_profiles, discover_services, ensure_config_dir, find_config_dir};
 use crate::output::{OutputFormat, serialize_value, write_product};
 
 /// 配置引擎
@@ -25,6 +26,21 @@ impl ConfigEngine {
   pub fn new(config_dir: impl AsRef<Path>) -> Result<Self> {
     let config_dir = config_dir.as_ref().to_path_buf();
     ensure_config_dir(&config_dir)?;
+    Ok(Self { config_dir })
+  }
+
+  /// 从当前工作目录向上查找配置目录并创建配置引擎
+  pub fn find(config_dir: impl AsRef<Path>) -> Result<Self> {
+    let current_dir = env::current_dir()
+      .map_err(Error::from_std)
+      .wrap_context("get current directory failed")?;
+
+    Self::find_from(current_dir, config_dir)
+  }
+
+  /// 从指定起始目录向上查找配置目录并创建配置引擎
+  pub fn find_from(start_dir: impl AsRef<Path>, config_dir: impl AsRef<Path>) -> Result<Self> {
+    let config_dir = find_config_dir(start_dir.as_ref(), config_dir.as_ref())?;
     Ok(Self { config_dir })
   }
 
@@ -46,6 +62,11 @@ impl ConfigEngine {
   /// 解析指定 profile 和 service 的最终配置
   pub fn resolve(&self, profile: &str, service: &str) -> Result<ResolvedConfig> {
     crate::resolve::resolve(&self.config_dir, profile, service)
+  }
+
+  /// 解析指定 service 的配置结构
+  pub fn resolve_service_schema(&self, service: &str) -> Result<ResolvedConfig> {
+    crate::resolve::resolve_service_schema(&self.config_dir, service)
   }
 
   /// 生成指定 profile 下全部服务的产物
@@ -83,6 +104,11 @@ impl ConfigEngine {
     self.render_rust_types_with(profile, service, &RustCodegenOptions::default())
   }
 
+  /// 按 service 配置结构渲染 Rust 配置结构定义
+  pub fn render_service_rust_types(&self, service: &str) -> Result<String> {
+    self.render_service_rust_types_with(service, &RustCodegenOptions::default())
+  }
+
   /// 按指定选项渲染 Rust 配置结构定义
   pub fn render_rust_types_with(
     &self,
@@ -97,6 +123,19 @@ impl ConfigEngine {
     )
   }
 
+  /// 按 service 配置结构和指定选项渲染 Rust 配置结构定义
+  pub fn render_service_rust_types_with(
+    &self,
+    service: &str,
+    options: &RustCodegenOptions,
+  ) -> Result<String> {
+    Ok(
+      self
+        .render_service_rust_types_report_with(service, options)?
+        .content,
+    )
+  }
+
   /// 渲染指定服务的 Rust 配置结构定义和规则命中报告
   pub fn render_rust_types_report(
     &self,
@@ -104,6 +143,11 @@ impl ConfigEngine {
     service: &str,
   ) -> Result<RustCodegenResult> {
     self.render_rust_types_report_with(profile, service, &RustCodegenOptions::default())
+  }
+
+  /// 按 service 配置结构渲染 Rust 配置结构定义和规则命中报告
+  pub fn render_service_rust_types_report(&self, service: &str) -> Result<RustCodegenResult> {
+    self.render_service_rust_types_report_with(service, &RustCodegenOptions::default())
   }
 
   /// 按指定选项渲染 Rust 配置结构定义和规则命中报告
@@ -114,6 +158,16 @@ impl ConfigEngine {
     options: &RustCodegenOptions,
   ) -> Result<RustCodegenResult> {
     let resolved = self.resolve(profile, service)?;
+    render_rust_types_report(resolved.value(), options)
+  }
+
+  /// 按 service 配置结构和指定选项渲染 Rust 配置结构定义和规则命中报告
+  pub fn render_service_rust_types_report_with(
+    &self,
+    service: &str,
+    options: &RustCodegenOptions,
+  ) -> Result<RustCodegenResult> {
+    let resolved = self.resolve_service_schema(service)?;
     render_rust_types_report(resolved.value(), options)
   }
 
@@ -132,6 +186,15 @@ impl ConfigEngine {
     )
   }
 
+  /// 按 service 配置结构生成 Rust 配置结构文件
+  pub fn generate_service_rust_types(
+    &self,
+    service: &str,
+    output_path: impl AsRef<Path>,
+  ) -> Result<()> {
+    self.generate_service_rust_types_with(service, output_path, &RustCodegenOptions::default())
+  }
+
   /// 按指定选项生成 Rust 配置结构文件
   pub fn generate_rust_types_with(
     &self,
@@ -144,6 +207,17 @@ impl ConfigEngine {
     write_rust_types(output_path.as_ref(), &content)
   }
 
+  /// 按 service 配置结构和指定选项生成 Rust 配置结构文件
+  pub fn generate_service_rust_types_with(
+    &self,
+    service: &str,
+    output_path: impl AsRef<Path>,
+    options: &RustCodegenOptions,
+  ) -> Result<()> {
+    let content = self.render_service_rust_types_with(service, options)?;
+    write_rust_types(output_path.as_ref(), &content)
+  }
+
   /// 生成指定服务的 Rust 配置结构文件并返回规则命中报告
   pub fn generate_rust_types_report_with(
     &self,
@@ -153,6 +227,18 @@ impl ConfigEngine {
     options: &RustCodegenOptions,
   ) -> Result<RustCodegenResult> {
     let result = self.render_rust_types_report_with(profile, service, options)?;
+    write_rust_types(output_path.as_ref(), &result.content)?;
+    Ok(result)
+  }
+
+  /// 按 service 配置结构生成 Rust 配置结构文件并返回规则命中报告
+  pub fn generate_service_rust_types_report_with(
+    &self,
+    service: &str,
+    output_path: impl AsRef<Path>,
+    options: &RustCodegenOptions,
+  ) -> Result<RustCodegenResult> {
+    let result = self.render_service_rust_types_report_with(service, options)?;
     write_rust_types(output_path.as_ref(), &result.content)?;
     Ok(result)
   }
@@ -243,11 +329,44 @@ impl ConfigEngine {
     self.config_dir.join("product").join(profile).join("rust")
   }
 
+  /// 获取 workspace 级 Rust 结构输出目录
+  pub fn default_target_rust_output_dir(&self) -> PathBuf {
+    self.workspace_root().join("target").join("bodhi_config")
+  }
+
+  /// 获取供 IDE 使用的 workspace 内 Rust 结构镜像输出目录
+  pub fn default_ide_rust_output_dir(&self) -> PathBuf {
+    self.workspace_root().join(".bodhi").join("bodhi_config")
+  }
+
   /// 获取默认 Rust 结构输出路径
   pub fn default_rust_output_path(&self, profile: &str, service: &str) -> PathBuf {
     self
       .default_rust_output_dir(profile)
       .join(format!("{}_config.rs", service))
+  }
+
+  /// 获取 workspace 级服务 Rust 结构输出路径
+  pub fn default_target_rust_output_path(&self, service: &str) -> PathBuf {
+    self
+      .default_target_rust_output_dir()
+      .join(service)
+      .join("config.rs")
+  }
+
+  /// 获取供 IDE 使用的 workspace 内服务 Rust 结构镜像输出路径
+  pub fn default_ide_rust_output_path(&self, service: &str) -> PathBuf {
+    self
+      .default_ide_rust_output_dir()
+      .join(service)
+      .join("config.rs")
+  }
+
+  fn workspace_root(&self) -> &Path {
+    self
+      .config_dir
+      .parent()
+      .unwrap_or(self.config_dir.as_path())
   }
 }
 

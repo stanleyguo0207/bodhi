@@ -55,6 +55,41 @@ fn engine_should_render_rust_types_for_gateway_config() {
 }
 
 #[test]
+fn engine_should_render_service_rust_types_without_profile() {
+  let tempdir = tempdir().expect("create tempdir");
+  let config_dir = tempdir.path().join("config");
+
+  fs::create_dir_all(config_dir.join("template/infra")).expect("create template infra dir");
+  fs::create_dir_all(config_dir.join("template/service")).expect("create template service dir");
+
+  fs::write(
+    config_dir.join("template/infra/log.toml"),
+    "[log]\nformat = \"json\"\nlevel = \"INFO\"\noutput = \"stderr\"\n",
+  )
+  .expect("write infra log");
+  fs::write(
+    config_dir.join("template/infra/service.toml"),
+    "[service]\nname = \"default\"\nshutdown_timeout_ms = 5000\n",
+  )
+  .expect("write infra service");
+  fs::write(
+    config_dir.join("template/service/lobby.toml"),
+    "[infra.service]\nname = \"lobby\"\n[server]\ngrpc_port = 50052\nhttp_port = 18081\n[matchmaking]\nmax_rooms = 1024\ntick_ms = 200\n",
+  )
+  .expect("write lobby template");
+
+  let engine = ConfigEngine::new(&config_dir).expect("create config engine");
+  let code = engine
+    .render_service_rust_types("lobby")
+    .expect("render rust types");
+
+  assert!(code.contains("pub struct Config"));
+  assert!(code.contains("pub matchmaking: MatchmakingConfig"));
+  assert!(code.contains("pub max_rooms: u64"));
+  assert!(code.contains("pub shutdown_timeout_ms: u64"));
+}
+
+#[test]
 fn engine_should_write_rust_types_to_file() {
   let tempdir = tempdir().expect("create tempdir");
   let config_dir = tempdir.path().join("config");

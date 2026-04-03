@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+bodhi_config_macros = { path = "../bodhi_config_macros" }
 bodhi_error = { path = "../bodhi_error" }
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

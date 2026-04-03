@@ -12,3 +12,6 @@
 
 # bodhi config generated products
 /config/product/
+
+# bodhi config crate-local IDE shims
+**/__bodhi_generated_config.rs

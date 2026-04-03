@@ -56,6 +56,34 @@ pub fn resolve(config_dir: &Path, profile: &str, service: &str) -> Result<Resolv
   Ok(ResolvedConfig::new(final_value))
 }
 
+pub fn resolve_service_schema(config_dir: &Path, service: &str) -> Result<ResolvedConfig> {
+  let base_infra = load_infra_configs(config_dir)?;
+  let service_templates = load_service_templates(config_dir)?;
+  let service_cfg = service_templates.get(service).ok_or_else(|| {
+    Error::new(CONFIGERR_SERVICENOTFOUND)
+      .wrap_context("resolve target service schema not found")
+      .wrap_context_with(|| format!("service={service}"))
+  })?;
+
+  validate_templates(&base_infra, &service_templates)?;
+
+  let service_infra = clone_path(service_cfg, &["infra"]);
+
+  let mut merged_infra = base_infra;
+  if let Some(value) = service_infra.as_ref() {
+    deep_merge(&mut merged_infra, value);
+  }
+
+  let mut final_value = merged_infra;
+  deep_merge(&mut final_value, &service_schema(service_cfg));
+
+  if !matches!(final_value, Value::Table(_)) {
+    return Err(Error::new(CONFIGERR_MERGEFAILED).wrap_context("resolved service schema is not a table"));
+  }
+
+  Ok(ResolvedConfig::new(final_value))
+}
+
 fn validate_templates(
   base_infra: &Value,
   service_templates: &BTreeMap<String, Value>,
