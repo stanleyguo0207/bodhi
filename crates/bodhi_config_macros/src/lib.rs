@@ -33,9 +33,8 @@ pub fn service_config(input: TokenStream) -> TokenStream {
     }
 
     pub use __bodhi_generated_config::Config;
-    pub type ServiceConfig = __bodhi_generated_config::Config;
 
-    fn load_service_config(profile: &str) -> ::bodhi_config::prelude::Result<ServiceConfig> {
+    fn load_service_config(profile: &str) -> ::bodhi_config::prelude::Result<Config> {
       ::bodhi_config::load_config(profile, #service)
     }
   }

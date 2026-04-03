@@ -334,11 +334,6 @@ impl ConfigEngine {
     self.workspace_root().join("target").join("bodhi_config")
   }
 
-  /// 获取供 IDE 使用的 workspace 内 Rust 结构镜像输出目录
-  pub fn default_ide_rust_output_dir(&self) -> PathBuf {
-    self.workspace_root().join(".bodhi").join("bodhi_config")
-  }
-
   /// 获取默认 Rust 结构输出路径
   pub fn default_rust_output_path(&self, profile: &str, service: &str) -> PathBuf {
     self
@@ -350,14 +345,6 @@ impl ConfigEngine {
   pub fn default_target_rust_output_path(&self, service: &str) -> PathBuf {
     self
       .default_target_rust_output_dir()
-      .join(service)
-      .join("config.rs")
-  }
-
-  /// 获取供 IDE 使用的 workspace 内服务 Rust 结构镜像输出路径
-  pub fn default_ide_rust_output_path(&self, service: &str) -> PathBuf {
-    self
-      .default_ide_rust_output_dir()
       .join(service)
       .join("config.rs")
   }

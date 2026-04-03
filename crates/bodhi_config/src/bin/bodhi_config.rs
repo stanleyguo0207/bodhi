@@ -21,7 +21,7 @@ struct Cli {
 enum Command {
   /// 列出可用的 profile 和 service
   List,
-  /// 为整个项目生成配置产物和 Rust 配置结构
+  /// 为整个项目生成配置产物，并可选生成 Rust 配置结构
   GenProject {
     #[arg(long)]
     rust_output: Option<PathBuf>,
@@ -123,46 +123,47 @@ fn main() -> Result<()> {
         println!("generated runtime products for profile {profile}");
       }
 
-      let type_overrides = if let Some(type_rules) = type_rules.as_ref() {
-        TypeOverrideRules::from_file(type_rules)?
-      } else {
-        TypeOverrideRules::default()
-      };
-      let show_rule_report = type_rules.is_some();
-      let options = RustCodegenOptions {
-        root_struct_name: root_struct,
-        type_overrides: type_overrides.clone(),
-      };
-      let rust_output = rust_output.unwrap_or_else(|| engine.default_ide_rust_output_dir());
-      let mut generated = Vec::new();
+      if let Some(rust_output) = rust_output {
+        let type_overrides = if let Some(type_rules) = type_rules.as_ref() {
+          TypeOverrideRules::from_file(type_rules)?
+        } else {
+          TypeOverrideRules::default()
+        };
+        let show_rule_report = type_rules.is_some();
+        let options = RustCodegenOptions {
+          root_struct_name: root_struct,
+          type_overrides: type_overrides.clone(),
+        };
+        let mut generated = Vec::new();
 
-      for service in engine.services()? {
-        let output_path = rust_output.join(&service).join("config.rs");
-        generated.push(generate_service_schema_report(
-          &engine,
-          &service,
-          output_path,
-          &options,
-        )?);
-      }
-
-      if show_rule_report {
-        let mut matched_rules = Vec::new();
-        for service_report in &generated {
-          matched_rules.extend(service_report.matched_rules.iter().cloned());
+        for service in engine.services()? {
+          let output_path = rust_output.join(&service).join("config.rs");
+          generated.push(generate_service_schema_report(
+            &engine,
+            &service,
+            output_path,
+            &options,
+          )?);
         }
 
-        let unused_rules = type_overrides.find_unused_rules(&matched_rules);
-        let report = match report_format {
-          RuleReportFormat::Text => render_rule_report_text(&generated, &unused_rules),
-          RuleReportFormat::Json => {
-            render_rule_report_json("workspace", &generated, &unused_rules)?
+        if show_rule_report {
+          let mut matched_rules = Vec::new();
+          for service_report in &generated {
+            matched_rules.extend(service_report.matched_rules.iter().cloned());
           }
-        };
-        emit_rule_report(&report, report_output.as_deref())?;
-      } else {
-        for service_report in &generated {
-          println!("generated {}", service_report.output);
+
+          let unused_rules = type_overrides.find_unused_rules(&matched_rules);
+          let report = match report_format {
+            RuleReportFormat::Text => render_rule_report_text(&generated, &unused_rules),
+            RuleReportFormat::Json => {
+              render_rule_report_json("workspace", &generated, &unused_rules)?
+            }
+          };
+          emit_rule_report(&report, report_output.as_deref())?;
+        } else {
+          for service_report in &generated {
+            println!("generated {}", service_report.output);
+          }
         }
       }
     }
