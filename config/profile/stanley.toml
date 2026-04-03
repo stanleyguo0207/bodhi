@@ -1,0 +1,17 @@
+[infra.log]
+format = "text"
+
+[services.gateway.infra.log]
+level = "WARN"
+
+[services.gateway.server]
+http_port = 28080
+
+[services.lobby.infra.log]
+level = "TRACE"
+
+[services.lobby.server]
+http_port = 28081
+
+[services.lobby.matchmaking]
+max_rooms = 2048

@@ -1,0 +1,11 @@
+[infra.log]
+output = "stderr"
+
+[infra.metrics]
+bind = "127.0.0.1:9090"
+
+[services.gateway.server]
+http_port = 18080
+
+[services.lobby.matchmaking]
+max_rooms = 128

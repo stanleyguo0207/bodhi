@@ -1,0 +1,33 @@
+# 类型覆盖规则优先级（高 -> 低）:
+# 1. [path_types] 精确路径，例如 "server.http_port"
+# 2. [path_types] 通配路径，例如 "**.timeout_ms"
+# 3. [field_types] 字段名，例如 "id"
+# 4. [suffix_types] 字段后缀，例如 "timeout_ms"
+#
+# 通配说明:
+# - *  匹配单个路径段或段内通配，例如 "*.id" / "*_port"
+# - ** 匹配任意层级，例如 "**.timeout_ms"
+#
+# 类型值必须是合法 Rust 类型表达式，例如:
+# - "u32"
+# - "Option<String>"
+# - "Vec<u64>"
+# - "std::collections::HashMap<String, String>"
+#
+# CLI 报告:
+# - 文本报告: cargo run -p bodhi_config --bin bodhi_config -- gen-rust --profile dev --type-rules config/type_overrides.toml
+# - JSON 报告: cargo run -p bodhi_config --bin bodhi_config -- gen-rust --profile dev --type-rules config/type_overrides.toml --report-format json
+# - 生成结束后会汇总未命中的规则，便于清理失效配置
+
+[field_types]
+id = "u64"
+# status = "Option<String>"
+
+[suffix_types]
+timeout_ms = "u32"
+# ids = "Vec<u64>"
+
+[path_types]
+"**.timeout_ms" = "u32"
+# "server.tags" = "Vec<String>"
+# "server.metadata" = "std::collections::HashMap<String, String>"

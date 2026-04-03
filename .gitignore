@@ -9,3 +9,6 @@
 
 # rust docs folders
 /docs/
+
+# bodhi config generated products
+/config/product/

@@ -1,0 +1,4 @@
+[log]
+level = "INFO"
+output = "stdout"
+format = "json"
