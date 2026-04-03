@@ -1,4 +1,3 @@
-use std::env;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -134,17 +133,15 @@ fn main() -> Result<()> {
         root_struct_name: root_struct,
         type_overrides: type_overrides.clone(),
       };
-      let rust_output = rust_output.unwrap_or_else(|| engine.default_target_rust_output_dir());
+      let rust_output = rust_output.unwrap_or_else(|| engine.default_ide_rust_output_dir());
       let mut generated = Vec::new();
 
       for service in engine.services()? {
         let output_path = rust_output.join(&service).join("config.rs");
-        let ide_output_path = service_source_mirror_path(&engine, &service)?;
         generated.push(generate_service_schema_report(
           &engine,
           &service,
           output_path,
-          Some(ide_output_path),
           &options,
         )?);
       }
@@ -317,14 +314,10 @@ fn generate_service_schema_report(
   engine: &ConfigEngine,
   service: &str,
   output: PathBuf,
-  mirror_output: Option<PathBuf>,
   options: &RustCodegenOptions,
 ) -> Result<GeneratedServiceReport> {
   let report = engine.render_service_rust_types_report_with(service, options)?;
   write_rust_types(&output, &report.content)?;
-  if let Some(mirror_output) = mirror_output.as_ref() {
-    write_rust_types(mirror_output, &report.content)?;
-  }
 
   Ok(GeneratedServiceReport {
     service: service.to_string(),
@@ -332,107 +325,6 @@ fn generate_service_schema_report(
     matched_rules: report.matched_rules,
     unused_rules: report.unused_rules,
   })
-}
-
-fn service_source_mirror_path(engine: &ConfigEngine, service: &str) -> Result<PathBuf> {
-  let manifest_dir = find_service_manifest_dir(&workspace_root(engine)?, service)?;
-  Ok(manifest_dir.join("src").join("__bodhi_generated_config.rs"))
-}
-
-fn workspace_root(engine: &ConfigEngine) -> Result<PathBuf> {
-  let config_dir = if engine.config_dir().is_absolute() {
-    engine.config_dir().to_path_buf()
-  } else {
-    env::current_dir()
-      .map_err(Error::from_std)
-      .wrap_context("get current directory failed")?
-      .join(engine.config_dir())
-  };
-
-  Ok(
-    config_dir
-      .parent()
-      .unwrap_or(config_dir.as_path())
-      .to_path_buf(),
-  )
-}
-
-fn find_service_manifest_dir(workspace_root: &Path, service: &str) -> Result<PathBuf> {
-  visit_for_service_manifest(workspace_root, service)?
-    .ok_or_else(|| Error::new(CONFIGERR_SERVICENOTFOUND))
-    .wrap_context("find service manifest directory failed")
-    .wrap_context_with(|| {
-      format!(
-        "service={service} workspace_root={}",
-        workspace_root.display()
-      )
-    })
-}
-
-fn visit_for_service_manifest(dir: &Path, service: &str) -> Result<Option<PathBuf>> {
-  for entry in fs::read_dir(dir)
-    .map_err(Error::from_std)
-    .wrap_context("read workspace directory failed")
-    .wrap_context_with(|| format!("dir={}", dir.display()))?
-  {
-    let entry = entry
-      .map_err(Error::from_std)
-      .wrap_context("read workspace directory entry failed")
-      .wrap_context_with(|| format!("dir={}", dir.display()))?;
-    let path = entry.path();
-
-    if path.is_dir() {
-      if should_skip_dir(&path) {
-        continue;
-      }
-
-      if let Some(found) = visit_for_service_manifest(&path, service)? {
-        return Ok(Some(found));
-      }
-      continue;
-    }
-
-    if path.file_name().and_then(|value| value.to_str()) != Some("Cargo.toml") {
-      continue;
-    }
-
-    if manifest_package_name(&path)?.as_deref() == Some(service) {
-      let manifest_dir = path
-        .parent()
-        .ok_or_else(|| Error::new(CONFIGERR_INVALIDPATH))
-        .wrap_context("resolve manifest parent directory failed")
-        .wrap_context_with(|| format!("path={}", path.display()))?;
-      return Ok(Some(manifest_dir.to_path_buf()));
-    }
-  }
-
-  Ok(None)
-}
-
-fn should_skip_dir(path: &Path) -> bool {
-  matches!(
-    path.file_name().and_then(|value| value.to_str()),
-    Some(".git") | Some("target") | Some(".bodhi")
-  )
-}
-
-fn manifest_package_name(manifest_path: &Path) -> Result<Option<String>> {
-  let content = fs::read_to_string(manifest_path)
-    .map_err(Error::from_std)
-    .wrap_context("read cargo manifest failed")
-    .wrap_context_with(|| format!("path={}", manifest_path.display()))?;
-  let manifest: toml::Value = toml::from_str(&content)
-    .map_err(Error::from_std)
-    .wrap_context("parse cargo manifest failed")
-    .wrap_context_with(|| format!("path={}", manifest_path.display()))?;
-
-  Ok(
-    manifest
-      .get("package")
-      .and_then(|value| value.get("name"))
-      .and_then(|value| value.as_str())
-      .map(str::to_owned),
-  )
 }
 
 fn render_rule_report_text(

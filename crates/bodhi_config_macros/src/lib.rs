@@ -1,5 +1,4 @@
 use std::env;
-use std::path::PathBuf;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -26,25 +25,12 @@ pub fn service_config(input: TokenStream) -> TokenStream {
     }
   };
 
-  let manifest_dir = match env::var("CARGO_MANIFEST_DIR") {
-    Ok(value) => PathBuf::from(value),
-    Err(err) => return compile_error(&format!("read CARGO_MANIFEST_DIR failed: {err}")),
-  };
-  let generated_path = manifest_dir.join("src").join("__bodhi_generated_config.rs");
-
-  if !generated_path.is_file() {
-    return compile_error(&format!(
-      "generated config not found: {}. Run `cargo gen-config` or `cargo run -p bodhi_config -- gen-project` first.",
-      generated_path.display()
-    ));
-  }
-
   let service = LitStr::new(&service, Span::call_site());
-  let generated_module = LitStr::new("__bodhi_generated_config.rs", Span::call_site());
 
   quote! {
-    #[path = #generated_module]
-    mod __bodhi_generated_config;
+    mod __bodhi_generated_config {
+      include!(concat!(env!("OUT_DIR"), "/config.rs"));
+    }
 
     pub use __bodhi_generated_config::Config;
     pub type ServiceConfig = __bodhi_generated_config::Config;
