@@ -45,7 +45,11 @@ fn engine_should_render_rust_types_for_gateway_config() {
     .render_rust_types("dev", "gateway")
     .expect("render rust types");
 
+  assert!(code.contains("pub mod merged"));
+  assert!(code.contains("pub mod infra"));
+  assert!(code.contains("pub mod service"));
   assert!(code.contains("pub struct Config"));
+  assert!(code.contains("pub use merged::Config"));
   assert!(code.contains("pub log: LogConfig"));
   assert!(code.contains("pub struct ServerConfig"));
   assert!(code.contains("pub grpc_port: u16"));
@@ -83,6 +87,8 @@ fn engine_should_render_service_rust_types_without_profile() {
     .render_service_rust_types("lobby")
     .expect("render rust types");
 
+  assert!(code.contains("pub mod infra"));
+  assert!(code.contains("pub mod service"));
   assert!(code.contains("pub struct Config"));
   assert!(code.contains("pub matchmaking: MatchmakingConfig"));
   assert!(code.contains("pub max_rooms: u64"));
@@ -122,8 +128,10 @@ fn engine_should_write_rust_types_to_file() {
     .expect("generate rust types file");
 
   let content = fs::read_to_string(&output_path).expect("read generated rust types file");
+  assert!(content.contains("pub mod infra"));
+  assert!(content.contains("pub mod service"));
   assert!(content.contains("pub struct Config"));
-  assert!(content.contains("pub struct ServiceConfig"));
+  assert!(content.contains("pub use merged::Config"));
 }
 
 #[test]

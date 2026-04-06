@@ -11,6 +11,10 @@ use toml::Value;
 
 use crate::errcode::configerr::*;
 
+const MERGED_MODULE_NAME: &str = "merged";
+const INFRA_MODULE_NAME: &str = "infra";
+const SERVICE_MODULE_NAME: &str = "service";
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct RustCodegenResult {
   pub content: String,
@@ -203,6 +207,15 @@ pub fn render_rust_types(value: &Value, options: &RustCodegenOptions) -> Result<
   Ok(render_rust_types_report(value, options)?.content)
 }
 
+pub fn render_layered_rust_types(
+  infra: &Value,
+  service: &Value,
+  merged: &Value,
+  options: &RustCodegenOptions,
+) -> Result<String> {
+  Ok(render_layered_rust_types_report(infra, service, merged, options)?.content)
+}
+
 pub fn render_rust_types_report(
   value: &Value,
   options: &RustCodegenOptions,
@@ -221,6 +234,33 @@ pub fn render_rust_types_report(
   generator.visit_table(root_struct_name.clone(), &[], root_table)?;
   let content = generator.render(&root_struct_name);
   let matched_rules = generator.matched_rules;
+  let unused_rules = options.type_overrides.find_unused_rules(&matched_rules);
+
+  Ok(RustCodegenResult {
+    content,
+    matched_rules,
+    unused_rules,
+  })
+}
+
+pub fn render_layered_rust_types_report(
+  infra: &Value,
+  service: &Value,
+  merged: &Value,
+  options: &RustCodegenOptions,
+) -> Result<RustCodegenResult> {
+  let merged_module = generate_module(merged, options, &options.root_struct_name)?;
+  let infra_module = generate_module(infra, options, "Config")?;
+  let service_module = generate_module(service, options, "Config")?;
+
+  let content = render_layered_modules(&merged_module, &infra_module, &service_module);
+  let matched_rules = unique_hits(
+    merged_module
+      .matched_rules
+      .into_iter()
+      .chain(infra_module.matched_rules)
+      .chain(service_module.matched_rules),
+  );
   let unused_rules = options.type_overrides.find_unused_rules(&matched_rules);
 
   Ok(RustCodegenResult {
@@ -389,6 +429,13 @@ impl Generator {
   }
 }
 
+#[derive(Debug)]
+struct GeneratedModule {
+  root_struct_name: String,
+  definitions: Vec<StructDefinition>,
+  matched_rules: Vec<TypeOverrideHit>,
+}
+
 #[derive(Clone, Debug)]
 struct StructDefinition {
   name: String,
@@ -400,6 +447,103 @@ struct FieldDefinition {
   name: String,
   rename: Option<String>,
   ty: String,
+}
+
+fn generate_module(
+  value: &Value,
+  options: &RustCodegenOptions,
+  root_struct_name: &str,
+) -> Result<GeneratedModule> {
+  let root_table = value
+    .as_table()
+    .ok_or_else(|| Error::new(CONFIGERR_INVALIDSTRUCTURE))
+    .wrap_context("resolved config root must be a table")?;
+
+  let root_struct_name = sanitize_type_name(root_struct_name);
+  let mut generator = Generator {
+    type_overrides: options.type_overrides.clone(),
+    ..Default::default()
+  };
+  generator.used_struct_names.insert(root_struct_name.clone());
+  generator.visit_table(root_struct_name.clone(), &[], root_table)?;
+
+  Ok(GeneratedModule {
+    root_struct_name,
+    definitions: generator.definitions,
+    matched_rules: generator.matched_rules,
+  })
+}
+
+fn render_layered_modules(
+  merged: &GeneratedModule,
+  infra: &GeneratedModule,
+  service: &GeneratedModule,
+) -> String {
+  let mut output = String::from("use serde::Deserialize;\n\n");
+  output.push_str(&render_module(MERGED_MODULE_NAME, merged));
+  output.push('\n');
+  output.push('\n');
+  output.push_str(&render_module(INFRA_MODULE_NAME, infra));
+  output.push('\n');
+  output.push('\n');
+  output.push_str(&render_module(SERVICE_MODULE_NAME, service));
+  output.push('\n');
+  output.push('\n');
+  output.push_str("pub use merged::Config;\n");
+
+  output
+}
+
+fn render_module(module_name: &str, module: &GeneratedModule) -> String {
+  let mut output = format!("pub mod {module_name} {{\n  use super::*;\n\n");
+  let mut definitions = module.definitions.clone();
+  definitions.sort_by(|left, right| {
+    if left.name == module.root_struct_name {
+      std::cmp::Ordering::Less
+    } else if right.name == module.root_struct_name {
+      std::cmp::Ordering::Greater
+    } else {
+      left.name.cmp(&right.name)
+    }
+  });
+
+  for (index, definition) in definitions.iter().enumerate() {
+    if index > 0 {
+      output.push('\n');
+    }
+
+    output.push_str("  #[derive(Debug, Deserialize)]\n");
+    output.push_str(&format!("  pub struct {} {{\n", definition.name));
+    for field in &definition.fields {
+      if let Some(rename) = &field.rename {
+        output.push_str(&format!("    #[serde(rename = \"{}\")]\n", rename));
+      }
+      output.push_str(&format!("    pub {}: {},\n", field.name, field.ty));
+    }
+    output.push_str("  }\n");
+  }
+
+  output.push('}');
+  output
+}
+
+fn unique_hits(hits: impl IntoIterator<Item = TypeOverrideHit>) -> Vec<TypeOverrideHit> {
+  let mut seen = BTreeSet::new();
+  let mut unique = Vec::new();
+
+  for hit in hits {
+    let key = (
+      hit.field_path.clone(),
+      hit.rust_type.clone(),
+      hit.rule_key.clone(),
+      hit.rule_source,
+    );
+    if seen.insert(key) {
+      unique.push(hit);
+    }
+  }
+
+  unique
 }
 
 fn scalar_type(field_name: &str, value: &Value) -> String {

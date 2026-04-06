@@ -33,9 +33,26 @@ pub fn service_config(input: TokenStream) -> TokenStream {
     }
 
     pub use __bodhi_generated_config::Config;
+    pub type InfraConfig = __bodhi_generated_config::infra::Config;
+    pub type ServiceConfig = __bodhi_generated_config::service::Config;
+    pub type ServiceConfigStore = ::bodhi_config::ConfigStore<InfraConfig, ServiceConfig>;
 
     fn load_service_config(profile: &str) -> ::bodhi_config::prelude::Result<Config> {
       ::bodhi_config::load_config(profile, #service)
+    }
+
+    fn load_infra_config(profile: &str) -> ::bodhi_config::prelude::Result<InfraConfig> {
+      ::bodhi_config::load_layered_config(profile, #service)?.extract_infra(".")
+    }
+
+    fn load_service_layer_config(profile: &str) -> ::bodhi_config::prelude::Result<ServiceConfig> {
+      ::bodhi_config::load_layered_config(profile, #service)?.extract_service(".")
+    }
+
+    fn load_service_config_store(
+      profile: &str,
+    ) -> ::bodhi_config::prelude::Result<ServiceConfigStore> {
+      ::bodhi_config::ConfigStore::<InfraConfig, ServiceConfig>::load(profile, #service)
     }
   }
   .into()

@@ -6,13 +6,17 @@ use std::path::Path;
 use bodhi_error::prelude::*;
 use toml::Value;
 
-use crate::engine::ResolvedConfig;
+use crate::engine::{ResolvedConfig, ResolvedLayers};
 use crate::errcode::configerr::*;
 use crate::loader::{load_infra_configs, load_profile, load_service_templates};
 use crate::merge::deep_merge;
 use crate::validate::{service_schema, validate_profile, validate_service_template};
 
 pub fn resolve(config_dir: &Path, profile: &str, service: &str) -> Result<ResolvedConfig> {
+  Ok(resolve_layers(config_dir, profile, service)?.into_resolved_config())
+}
+
+pub fn resolve_layers(config_dir: &Path, profile: &str, service: &str) -> Result<ResolvedLayers> {
   let base_infra = load_infra_configs(config_dir)?;
   let profile_cfg = load_profile(config_dir, profile)?;
   let service_templates = load_service_templates(config_dir)?;
@@ -46,17 +50,14 @@ pub fn resolve(config_dir: &Path, profile: &str, service: &str) -> Result<Resolv
   let profile_service_without_infra = strip_top_level_key(&profile_service, "infra");
   deep_merge(&mut merged_service, &profile_service_without_infra);
 
-  let mut final_value = merged_infra;
-  deep_merge(&mut final_value, &merged_service);
-
-  if !matches!(final_value, Value::Table(_)) {
-    return Err(Error::new(CONFIGERR_MERGEFAILED).wrap_context("resolved config is not a table"));
-  }
-
-  Ok(ResolvedConfig::new(final_value))
+  ResolvedLayers::new(merged_infra, merged_service)
 }
 
 pub fn resolve_service_schema(config_dir: &Path, service: &str) -> Result<ResolvedConfig> {
+  Ok(resolve_service_schema_layers(config_dir, service)?.into_resolved_config())
+}
+
+pub fn resolve_service_schema_layers(config_dir: &Path, service: &str) -> Result<ResolvedLayers> {
   let base_infra = load_infra_configs(config_dir)?;
   let service_templates = load_service_templates(config_dir)?;
   let service_cfg = service_templates.get(service).ok_or_else(|| {
@@ -74,14 +75,7 @@ pub fn resolve_service_schema(config_dir: &Path, service: &str) -> Result<Resolv
     deep_merge(&mut merged_infra, value);
   }
 
-  let mut final_value = merged_infra;
-  deep_merge(&mut final_value, &service_schema(service_cfg));
-
-  if !matches!(final_value, Value::Table(_)) {
-    return Err(Error::new(CONFIGERR_MERGEFAILED).wrap_context("resolved service schema is not a table"));
-  }
-
-  Ok(ResolvedConfig::new(final_value))
+  ResolvedLayers::new(merged_infra, service_schema(service_cfg))
 }
 
 fn validate_templates(

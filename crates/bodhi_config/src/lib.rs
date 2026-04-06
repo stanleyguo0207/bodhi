@@ -7,6 +7,7 @@ pub mod loader;
 pub mod merge;
 pub mod output;
 pub mod resolve;
+pub mod runtime;
 pub mod validate;
 
 #[doc(hidden)]
@@ -18,8 +19,9 @@ pub use crate::codegen::{
   RustCodegenOptions, RustCodegenResult, TypeOverrideHit, TypeOverrideRule, TypeOverrideRules,
   TypeOverrideSource,
 };
-pub use crate::engine::{ConfigEngine, ResolvedConfig};
+pub use crate::engine::{ConfigEngine, ResolvedConfig, ResolvedLayers};
 pub use crate::output::OutputFormat;
+pub use crate::runtime::{ConfigSnapshot, ConfigStore};
 
 use std::path::Path;
 
@@ -32,12 +34,29 @@ where
   load_config_from("config", profile, service)
 }
 
-pub fn load_config_from<T>(config_dir: impl AsRef<Path>, profile: &str, service: &str) -> prelude::Result<T>
+pub fn load_config_from<T>(
+  config_dir: impl AsRef<Path>,
+  profile: &str,
+  service: &str,
+) -> prelude::Result<T>
 where
   T: DeserializeOwned,
 {
   let engine = ConfigEngine::find(config_dir)?;
   engine.resolve(profile, service)?.extract(".")
+}
+
+pub fn load_layered_config(profile: &str, service: &str) -> prelude::Result<ResolvedLayers> {
+  load_layered_config_from("config", profile, service)
+}
+
+pub fn load_layered_config_from(
+  config_dir: impl AsRef<Path>,
+  profile: &str,
+  service: &str,
+) -> prelude::Result<ResolvedLayers> {
+  let engine = ConfigEngine::find(config_dir)?;
+  engine.resolve_layers(profile, service)
 }
 
 /// 预导入模块
@@ -46,10 +65,13 @@ pub mod prelude {
     RustCodegenOptions, RustCodegenResult, TypeOverrideHit, TypeOverrideRule, TypeOverrideRules,
     TypeOverrideSource,
   };
-  pub use crate::engine::{ConfigEngine, ResolvedConfig};
+  pub use crate::engine::{ConfigEngine, ResolvedConfig, ResolvedLayers};
   pub use crate::errcode::configerr::*;
   pub use crate::load_config;
   pub use crate::load_config_from;
+  pub use crate::load_layered_config;
+  pub use crate::load_layered_config_from;
   pub use crate::output::OutputFormat;
+  pub use crate::runtime::{ConfigSnapshot, ConfigStore};
   pub use bodhi_error::prelude::{Error, OptionExt, Result, ResultExt};
 }
